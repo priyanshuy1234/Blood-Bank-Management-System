@@ -286,12 +286,17 @@ app.post('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin']), 
       return res.status(404).json({ msg: 'Associated Blood Bank not found' });
     }
 
-    // Optional: Check if donorId is valid if provided
+    // FIX: Validate donorId before querying if it's provided and not null/empty string
+    let donorObjectId = null;
     if (donorId) {
+      if (!mongoose.Types.ObjectId.isValid(donorId)) {
+        return res.status(400).json({ msg: 'Invalid Donor User ID format' });
+      }
       const donorExists = await User.findById(donorId);
       if (!donorExists || donorExists.role !== 'donor') {
-        return res.status(404).json({ msg: 'Associated Donor not found or is not a donor' });
+        return res.status(404).json({ msg: 'Associated Donor not found or is not a donor role' });
       }
+      donorObjectId = donorExists._id; // Use the actual ObjectId from the found donor
     }
 
     bloodUnit = new BloodUnit({
@@ -301,7 +306,7 @@ app.post('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin']), 
       collectionDate,
       expiryDate,
       bloodBank: bloodBankId, // Store the ObjectId of the blood bank
-      donor: donorId // Store the ObjectId of the donor
+      donor: donorObjectId // Store the ObjectId of the donor (will be null if not provided/invalid)
     });
 
     await bloodUnit.save();
@@ -309,7 +314,8 @@ app.post('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin']), 
 
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server error adding blood unit');
+    // FIX: Send JSON error response
+    res.status(500).json({ msg: 'Server error adding blood unit', error: err.message });
   }
 });
 

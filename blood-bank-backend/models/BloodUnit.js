@@ -42,16 +42,19 @@ const BloodUnitSchema = new mongoose.Schema({
   donor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User', // Refers to the 'User' model (assuming Donor is a User role)
-    // required: true, // Making it optional for now, can be required later
+    default: null, // <-- THIS IS THE CRUCIAL ADDITION: Allows null if no donorId is provided
+    // required: false, // Explicitly false, or just omit 'required' if 'default: null' is present
   },
   // Reference to the recipient/request if used/reserved
   recipient: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User', // Refers to the 'User' model
+    default: null, // Also set default to null for recipient
   },
   request: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BloodRequest', // Will refer to a BloodRequest model (to be created later)
+    default: null, // Also set default to null for request
   },
 }, {
   timestamps: true // Adds createdAt and updatedAt fields
