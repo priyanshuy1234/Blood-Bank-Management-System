@@ -1,38 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import DashboardContainer from '../components/DashboardContainer';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 const AdminDashboard = ({ userId }) => {
   const [inventorySummary, setInventorySummary] = useState([]);
   const [bloodUnits, setBloodUnits] = useState([]);
   const [bloodBanks, setBloodBanks] = useState([]); // To populate the blood bank dropdown
   const [requests, setRequests] = useState([]); // State for blood requests
-  const [availableUnits, setAvailableUnits] = useState([]); // State for available blood units for fulfillment
+  const [appointments, setAppointments] = useState([]); // State for appointments
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [addUnitStatus, setAddUnitStatus] = useState('');
   const [addBankStatus, setAddBankStatus] = useState('');
-  const [actionStatus, setActionStatus] = useState(''); // For request actions
-  const [selectedRequest, setSelectedRequest] = useState(null); // For managing a specific request
-  const [selectedUnitsForFulfillment, setSelectedUnitsForFulfillment] = useState([]); // For multi-select in fulfill modal
+  const [actionStatus, setActionStatus] = useState('');
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedUnitsForFulfillment, setSelectedUnitsForFulfillment] = useState([]);
 
   // Form data for adding new blood unit
   const [newUnitFormData, setNewUnitFormData] = useState({
-    unitId: '',
-    bloodGroup: 'A+', // Default
-    componentType: 'Whole Blood', // Default
-    collectionDate: '',
-    expiryDate: '',
-    bloodBankId: '', // Will be populated from fetched blood banks
-    donorId: ''
+    unitId: '', bloodGroup: 'A+', componentType: 'Whole Blood', collectionDate: '', expiryDate: '', bloodBankId: '', donorId: ''
   });
-
   // Form data for adding new blood bank
   const [newBankFormData, setNewBankFormData] = useState({
-    name: '',
-    contactEmail: '',
-    contactPhone: '',
-    address: { street: '', city: '', state: '', zipCode: '', country: '' }
+    name: '', contactEmail: '', contactPhone: '', address: { street: '', city: '', state: '', zipCode: '', country: '' }
   });
+
+  // --- Example Static Data for Charts (These will be replaced by fetched data later if backend analytics are implemented) ---
+  // Moved inside the component where they are used
+  const bloodGroupChartData = [
+    { bloodGroup: 'A+', count: 400 }, { bloodGroup: 'A-', count: 200 }, // Changed 'name' to 'bloodGroup', 'units' to 'count' for consistency with backend
+    { bloodGroup: 'B+', count: 300 }, { bloodGroup: 'B-', count: 150 },
+    { bloodGroup: 'AB+', count: 100 }, { bloodGroup: 'AB-', count: 50 },
+    { bloodGroup: 'O+', count: 500 }, { bloodGroup: 'O-', count: 250 },
+  ];
+  const requestStatusData = [
+    { name: 'Pending', count: 15 },
+    { name: 'Approved', count: 8 },
+    { name: 'Fulfilled', count: 25 },
+    { name: 'Rejected', count: 3 },
+    { name: 'Cancelled', count: 2 },
+  ];
+  const bloodTrendChartData = [ // Renamed from monthlyDonationData for clarity
+    { month: 'Jan', added: 30, used: 15 }, { month: 'Feb', added: 45, used: 20 }, // Added 'added' and 'used' for line chart
+    { month: 'Mar', added: 60, used: 30 }, { month: 'Apr', added: 50, used: 25 },
+    { month: 'May', added: 75, used: 40 }, { month: 'Jun', added: 90, used: 50 },
+  ];
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#d0ed57'];
+  // --- End Example Static Data ---
 
 
   const fetchAdminData = async () => {
@@ -64,8 +78,7 @@ const AdminDashboard = ({ userId }) => {
       }
       const unitsData = await unitsResponse.json();
       setBloodUnits(unitsData);
-      // Filter for available units that match the requested blood group/component type for fulfillment
-      setAvailableUnits(unitsData.filter(unit => unit.status === 'Available'));
+      setSelectedUnitsForFulfillment([]);
 
 
       // Fetch Blood Banks
@@ -76,7 +89,7 @@ const AdminDashboard = ({ userId }) => {
       const banksData = await banksResponse.json();
       setBloodBanks(banksData);
       if (banksData.length > 0) {
-        setNewUnitFormData(prev => ({ ...prev, bloodBankId: banksData[0]._id })); // Set default blood bank
+        setNewUnitFormData(prev => ({ ...prev, bloodBankId: banksData[0]._id }));
       }
 
       // Fetch all Blood Requests
@@ -90,6 +103,47 @@ const AdminDashboard = ({ userId }) => {
       const requestsData = await requestsResponse.json();
       setRequests(requestsData);
 
+      // Fetch all Appointments
+      const appointmentsResponse = await fetch('http://localhost:5000/api/appointments', {
+        headers: { 'x-auth-token': token }
+      });
+      if (!appointmentsResponse.ok) {
+        const errorData = await appointmentsResponse.json();
+        throw new Error(errorData.msg || 'Failed to fetch appointments');
+      }
+      const appointmentsData = await appointmentsResponse.json();
+      setAppointments(appointmentsData);
+
+      // --- Fetch Analytics Data (uncomment and use if backend routes are functional) ---
+      // These lines are commented out because we are using the static data defined above.
+      // If you implement the backend analytics routes, you would uncomment these and remove the static data.
+      /*
+      const bloodGroupChartResponse = await fetch('http://localhost:5000/api/analytics/blood-units-by-group', {
+        headers: { 'x-auth-token': token }
+      });
+      if (bloodGroupChartResponse.ok) {
+        const data = await bloodGroupChartResponse.json();
+        setBloodGroupChartData(data);
+      }
+
+      const requestStatusChartResponse = await fetch('http://localhost:5000/api/analytics/requests-by-status', {
+        headers: { 'x-auth-token': token }
+      });
+      if (requestStatusChartResponse.ok) {
+        const data = await requestStatusChartResponse.json();
+        setRequestStatusChartData(data);
+      }
+
+      const bloodTrendChartResponse = await fetch('http://localhost:5000/api/analytics/blood-units-over-time?period=6months', {
+        headers: { 'x-auth-token': token }
+      });
+      if (bloodTrendChartResponse.ok) {
+        const data = await bloodTrendChartResponse.json();
+        setBloodTrendChartData(data);
+      }
+      */
+
+
     } catch (err) {
       console.error('Error fetching admin data:', err);
       setError(err.message);
@@ -100,175 +154,96 @@ const AdminDashboard = ({ userId }) => {
 
   useEffect(() => {
     fetchAdminData();
-  }, [userId]); // Re-fetch data if user changes
+  }, [userId]);
 
-  // Handle change for new unit form
+  // Handle forms (unchanged)
   const handleNewUnitChange = (e) => {
     const { name, value } = e.target;
     setNewUnitFormData(prev => ({ ...prev, [name]: value }));
   };
-
-  // Handle submission for new unit form
   const handleAddBloodUnit = async (e) => {
     e.preventDefault();
     setAddUnitStatus('Adding unit...');
     const token = localStorage.getItem('token');
-
     try {
       if (new Date(newUnitFormData.expiryDate) <= new Date(newUnitFormData.collectionDate)) {
         throw new Error('Expiry Date must be after Collection Date.');
       }
-
       const response = await fetch('http://localhost:5000/api/blood-units', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token
-        },
-        body: JSON.stringify(newUnitFormData)
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, body: JSON.stringify(newUnitFormData)
       });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.msg || 'Failed to add blood unit');
-      }
-
+      if (!response.ok) { const errData = await response.json(); throw new Error(errData.msg || 'Failed to add blood unit'); }
       setAddUnitStatus('Blood unit added successfully!');
-      setNewUnitFormData({ // Reset form
-        unitId: '',
-        bloodGroup: 'A+',
-        componentType: 'Whole Blood',
-        collectionDate: '',
-        expiryDate: '',
-        bloodBankId: bloodBanks.length > 0 ? bloodBanks[0]._id : '',
-        donorId: ''
-      });
-      fetchAdminData(); // Re-fetch data to update lists
-    } catch (err) {
-      console.error('Error adding blood unit:', err);
-      setAddUnitStatus(`Error: ${err.message}`);
-    } finally {
-      setTimeout(() => setAddUnitStatus(''), 3000);
-    }
+      setNewUnitFormData({ unitId: '', bloodGroup: 'A+', componentType: 'Whole Blood', collectionDate: '', expiryDate: '', bloodBankId: bloodBanks.length > 0 ? bloodBanks[0]._id : '', donorId: '' });
+      fetchAdminData();
+    } catch (err) { console.error('Error adding blood unit:', err); setAddUnitStatus(`Error: ${err.message}`); } finally { setTimeout(() => setAddUnitStatus(''), 3000); }
   };
 
-  // Handle change for new blood bank form
   const handleNewBankChange = (e) => {
     const { name, value } = e.target;
     if (name.startsWith('address.')) {
       const addressField = name.split('.')[1];
-      setNewBankFormData(prevState => ({
-        ...prevState,
-        address: {
-          ...prevState.address,
-          [addressField]: value
-        }
-      }));
+      setNewBankFormData(prevState => ({ ...prevState, address: { ...prevState.address, [addressField]: value } }));
     } else {
       setNewBankFormData(prev => ({ ...prev, [name]: value }));
     }
   };
-
-  // Handle submission for new blood bank form
   const handleAddBloodBank = async (e) => {
     e.preventDefault();
     setAddBankStatus('Adding blood bank...');
     const token = localStorage.getItem('token');
-
     try {
       const response = await fetch('http://localhost:5000/api/blood-banks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token
-        },
-        body: JSON.stringify(newBankFormData)
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, body: JSON.stringify(newBankFormData)
       });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.msg || 'Failed to add blood bank');
-      }
-
+      if (!response.ok) { const errData = await response.json(); throw new Error(errData.msg || 'Failed to add blood bank'); }
       setAddBankStatus('Blood bank added successfully!');
-      setNewBankFormData({ // Reset form
-        name: '', contactEmail: '', contactPhone: '',
-        address: { street: '', city: '', state: '', zipCode: '', country: '' }
-      });
-      fetchAdminData(); // Re-fetch data to update lists and dropdowns
-    } catch (err) {
-      console.error('Error adding blood bank:', err);
-      setAddBankStatus(`Error: ${err.message}`);
-    } finally {
-      setTimeout(() => setAddBankStatus(''), 3000);
-    }
+      setNewBankFormData({ name: '', contactEmail: '', contactPhone: '', address: { street: '', city: '', state: '', zipCode: '', country: '' } });
+      fetchAdminData();
+    } catch (err) { console.error('Error adding blood bank:', err); setAddBankStatus(`Error: ${err.message}`); } finally { setTimeout(() => setAddBankStatus(''), 3000); }
   };
 
-  const handleStatusUpdate = async (requestId, newStatus) => {
-    setActionStatus('Updating status...');
+  const handleRequestStatusUpdate = async (requestId, newStatus) => {
+    setActionStatus('Updating request status...');
     const token = localStorage.getItem('token');
-
     try {
       const response = await fetch(`http://localhost:5000/api/blood-requests/${requestId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token
-        },
-        body: JSON.stringify({ status: newStatus })
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, body: JSON.stringify({ status: newStatus })
       });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.msg || 'Failed to update status');
-      }
-
+      if (!response.ok) { const errData = await response.json(); throw new Error(errData.msg || 'Failed to update status'); }
       setActionStatus(`Request status updated to ${newStatus}!`);
-      fetchAdminData(); // Re-fetch all data to update lists
-    } catch (err) {
-      console.error('Error updating status:', err);
-      setActionStatus(`Error: ${err.message}`);
-    } finally {
-      setTimeout(() => setActionStatus(''), 3000);
-    }
+      fetchAdminData();
+    } catch (err) { console.error('Error updating status:', err); setActionStatus(`Error: ${err.message}`); } finally { setTimeout(() => setActionStatus(''), 3000); }
   };
 
   const handleFulfillRequest = async (e) => {
     e.preventDefault();
     setActionStatus('Fulfilling request...');
     const token = localStorage.getItem('token');
-
     if (!selectedRequest || selectedUnitsForFulfillment.length === 0) {
-      setActionStatus('Error: Please select a request and at least one unit.');
-      setTimeout(() => setActionStatus(''), 3000);
-      return;
+      setActionStatus('Error: Please select a request and at least one unit.'); setTimeout(() => setActionStatus(''), 3000); return;
     }
-
     try {
       const response = await fetch(`http://localhost:5000/api/blood-requests/${selectedRequest._id}/fulfill`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token
-        },
-        body: JSON.stringify({ assignedUnitIds: selectedUnitsForFulfillment }) // Send array of IDs
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, body: JSON.stringify({ assignedUnitIds: selectedUnitsForFulfillment })
       });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.msg || 'Failed to fulfill request');
-      }
-
+      if (!response.ok) { const errData = await response.json(); throw new Error(errData.msg || 'Failed to fulfill request'); }
       setActionStatus('Request fulfilled successfully!');
-      setSelectedRequest(null); // Close modal
-      setSelectedUnitsForFulfillment([]); // Clear selected units
-      fetchAdminData(); // Re-fetch all data
-    } catch (err) {
-      console.error('Error fulfilling request:', err);
-      setActionStatus(`Error: ${err.message}`);
-    } finally {
-      setTimeout(() => setActionStatus(''), 3000);
-    }
+      setSelectedRequest(null); setSelectedUnitsForFulfillment([]); fetchAdminData();
+    } catch (err) { console.error('Error fulfilling request:', err); setActionStatus(`Error: ${err.message}`); } finally { setTimeout(() => setActionStatus(''), 3000); }
+  };
+
+  const handleAppointmentStatusUpdate = async (appointmentId, newStatus) => {
+    setActionStatus('Updating appointment status...');
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(`http://localhost:5000/api/appointments/${appointmentId}/status`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, body: JSON.stringify({ status: newStatus })
+      });
+      if (!response.ok) { const errData = await response.json(); throw new Error(errData.msg || 'Failed to update appointment status'); }
+      setActionStatus(`Appointment status updated to ${newStatus}!`);
+      fetchAdminData();
+    } catch (err) { console.error('Error updating appointment status:', err); setActionStatus(`Error: ${err.message}`); } finally { setTimeout(() => setActionStatus(''), 3000); }
   };
 
 
@@ -287,6 +262,69 @@ const AdminDashboard = ({ userId }) => {
           {actionStatus}
         </div>
       )}
+
+      {/* Analytics and Reporting Section */}
+      <div className="mb-8 p-6 border border-gray-200 rounded-xl shadow-md">
+        <h3 className="text-2xl font-bold text-gray-900 mb-4">Analytics & Reports</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Blood Group Distribution Chart */}
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <h4 className="text-xl font-semibold text-gray-800 mb-3">Blood Group Distribution (Available Units)</h4>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={bloodGroupChartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="bloodGroup" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="count" fill="#DC2626" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Request Status Overview Chart */}
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <h4 className="text-xl font-semibold text-gray-800 mb-3">Request Status Overview</h4>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={requestStatusData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="count"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                >
+                  {requestStatusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Blood Units Trend Over Time Chart */}
+          <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow-sm">
+            <h4 className="text-xl font-semibold text-gray-800 mb-3">Blood Units Trend (Last 6 Months)</h4>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={bloodTrendChartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="added" stroke="#0088FE" name="Units Added" />
+                <Line type="monotone" dataKey="used" stroke="#FF8042" name="Units Used" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
 
       {/* Add Blood Bank Section */}
       <div className="mb-8 p-6 border border-gray-200 rounded-xl shadow-md">
@@ -471,8 +509,8 @@ const AdminDashboard = ({ userId }) => {
                     <td className="py-2 px-4 text-sm text-gray-800 space-x-2">
                       {req.status === 'Pending' && (
                         <>
-                          <button onClick={() => handleStatusUpdate(req._id, 'Approved')} className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600">Approve</button>
-                          <button onClick={() => handleStatusUpdate(req._id, 'Rejected')} className="bg-red-500 text-white px-3 py-1 rounded-full text-xs hover:bg-red-600">Reject</button>
+                          <button onClick={() => handleRequestStatusUpdate(req._id, 'Approved')} className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600">Approve</button>
+                          <button onClick={() => handleRequestStatusUpdate(req._id, 'Rejected')} className="bg-red-500 text-white px-3 py-1 rounded-full text-xs hover:bg-red-600">Reject</button>
                         </>
                       )}
                       {req.status === 'Approved' && (
@@ -483,7 +521,7 @@ const AdminDashboard = ({ userId }) => {
                       )}
                       {/* Optionally add Cancel button for any status before Fulfilled */}
                       {['Pending', 'Approved'].includes(req.status) && (
-                         <button onClick={() => handleStatusUpdate(req._id, 'Cancelled')} className="bg-gray-500 text-white px-3 py-1 rounded-full text-xs hover:bg-gray-600">Cancel</button>
+                         <button onClick={() => handleRequestStatusUpdate(req._id, 'Cancelled')} className="bg-gray-500 text-white px-3 py-1 rounded-full text-xs hover:bg-gray-600">Cancel</button>
                       )}
                     </td>
                   </tr>
@@ -494,7 +532,56 @@ const AdminDashboard = ({ userId }) => {
         )}
       </div>
 
-      {/* Fulfill Request Modal */}
+      {/* All Appointments List for Admin */}
+      <div className="p-6 border border-gray-200 rounded-xl shadow-md mt-8">
+        <h3 className="text-2xl font-bold text-gray-900 mb-4">All Appointments</h3>
+        {appointments.length === 0 ? (
+          <p className="text-gray-600">No appointments found.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white rounded-lg overflow-hidden shadow-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Donor</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Date & Time</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Blood Bank</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Blood Group</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Status</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {appointments.map(app => (
+                  <tr key={app._id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50">
+                    <td className="py-2 px-4 text-sm text-gray-800">{app.donor ? `${app.donor.firstName} (${app.donor.email})` : 'N/A'}</td>
+                    <td className="py-2 px-4 text-sm text-gray-800">{new Date(app.appointmentDate).toLocaleString()}</td>
+                    <td className="py-2 px-4 text-sm text-gray-800">{app.bloodBank?.name || 'N/A'}</td>
+                    <td className="py-2 px-4 text-sm text-gray-800">{app.bloodGroup || 'Not specified'}</td>
+                    <td className="py-2 px-4 text-sm text-gray-800">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold
+                        ${app.status === 'Scheduled' ? 'bg-blue-100 text-blue-800' :
+                          app.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                          'bg-red-100 text-red-800'}`}>
+                        {app.status}
+                      </span>
+                    </td>
+                    <td className="py-2 px-4 text-sm text-gray-800 space-x-2">
+                      {app.status === 'Scheduled' && (
+                        <>
+                          <button onClick={() => handleAppointmentStatusUpdate(app._id, 'Completed')} className="bg-green-500 text-white px-3 py-1 rounded-full text-xs hover:bg-green-600">Mark Complete</button>
+                          <button onClick={() => handleAppointmentStatusUpdate(app._id, 'Cancelled')} className="bg-red-500 text-white px-3 py-1 rounded-full text-xs hover:bg-red-600">Cancel</button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Fulfill Request Modal (same as BloodBankStaffDashboard) */}
       {selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full relative transform scale-95 animate-scale-in">
@@ -525,8 +612,9 @@ const AdminDashboard = ({ userId }) => {
                   className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 h-32" // Increased height for multi-select
                   required
                 >
-                  {availableUnits
-                    .filter(unit => // Filter units by requested blood group and component type
+                  {bloodUnits // Use bloodUnits from AdminDashboard's state
+                    .filter(unit =>
+                      unit.status === 'Available' &&
                       unit.bloodGroup === selectedRequest.bloodGroup &&
                       unit.componentType === selectedRequest.componentType
                     )
@@ -536,7 +624,8 @@ const AdminDashboard = ({ userId }) => {
                       </option>
                     ))}
                 </select>
-                {availableUnits.filter(unit =>
+                {bloodUnits.filter(unit =>
+                      unit.status === 'Available' &&
                       unit.bloodGroup === selectedRequest.bloodGroup &&
                       unit.componentType === selectedRequest.componentType
                     ).length === 0 && (

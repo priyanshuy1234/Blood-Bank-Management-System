@@ -1,7 +1,6 @@
-const mongoose = require('mongoose'); // Import Mongoose
+const mongoose = require('mongoose');
 
 // Define the User Schema
-// This schema defines the structure of a user document in MongoDB
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -22,7 +21,7 @@ const userSchema = new mongoose.Schema({
     default: 'donor', // Default role for new registrations
     required: true
   },
-  // Common profile fields (can be expanded later in separate profile models)
+  // Common profile fields
   firstName: {
     type: String,
     trim: true
@@ -34,7 +33,6 @@ const userSchema = new mongoose.Schema({
   contactNumber: {
     type: String,
     trim: true,
-    // Optional: Add regex for phone number validation if needed
   },
   address: {
     street: { type: String, trim: true },
@@ -43,14 +41,38 @@ const userSchema = new mongoose.Schema({
     zipCode: { type: String, trim: true },
     country: { type: String, trim: true },
   },
-  // Timestamps for creation and last update
+  // --- New Fields for Donor Eligibility ---
+  bloodType: {
+    type: String,
+    enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', null], // Allow null if not yet set
+    default: null,
+  },
+  lastDonationDate: {
+    type: Date,
+    default: null,
+  },
+  // Status based on eligibility screening
+  eligibilityStatus: {
+    type: String,
+    enum: ['Unknown', 'Eligible', 'Deferred', 'Needs Review'],
+    default: 'Unknown',
+  },
+  // Medical history for eligibility screening
+  medicalHistory: {
+    hasChronicIllness: { type: Boolean, default: false },
+    recentTravelToRiskArea: { type: Boolean, default: false },
+    recentSurgery: { type: Boolean, default: false },
+    onMedication: { type: Boolean, default: false },
+    // Add more specific questions as needed for a real system
+    notes: { type: String, trim: true }
+  },
+  // --- End New Fields ---
+
 }, {
   timestamps: true // Adds createdAt and updatedAt fields automatically
 });
 
 // Create the User Model from the schema
-// Mongoose will automatically create a collection named 'users' (lowercase, plural) in MongoDB
 const User = mongoose.model('User', userSchema);
 
-// Export the User model so it can be used in other parts of the application
 module.exports = User;

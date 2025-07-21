@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import DashboardContainer from '../components/DashboardContainer';
 
 const BloodBankStaffDashboard = ({ userId }) => {
-  const [requests, setRequests] = useState([]);
+  const [requests, setRequests] = useState([]); // Existing requests state
+  const [appointments, setAppointments] = useState([]); // New appointments state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedRequest, setSelectedRequest] = useState(null); // For managing a specific request
-  const [assignedUnitIds, setAssignedUnitIds] = useState(''); // For fulfilling request
-  const [actionStatus, setActionStatus] = useState(''); // For status messages after actions
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [assignedUnitIds, setAssignedUnitIds] = useState('');
+  const [actionStatus, setActionStatus] = useState(''); // For request/appointment actions
 
-  const fetchRequests = async () => {
+  const fetchStaffData = async () => {
     setLoading(true);
     setError(null);
     const token = localStorage.getItem('token');
@@ -20,19 +21,30 @@ const BloodBankStaffDashboard = ({ userId }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/blood-requests', {
+      // Fetch all Blood Requests
+      const requestsResponse = await fetch('http://localhost:5000/api/blood-requests', {
         headers: { 'x-auth-token': token }
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!requestsResponse.ok) {
+        const errorData = await requestsResponse.json();
         throw new Error(errorData.msg || 'Failed to fetch blood requests');
       }
+      const requestsData = await requestsResponse.json();
+      setRequests(requestsData);
 
-      const data = await response.json();
-      setRequests(data);
+      // Fetch all Appointments
+      const appointmentsResponse = await fetch('http://localhost:5000/api/appointments', {
+        headers: { 'x-auth-token': token }
+      });
+      if (!appointmentsResponse.ok) {
+        const errorData = await appointmentsResponse.json();
+        throw new Error(errorData.msg || 'Failed to fetch appointments');
+      }
+      const appointmentsData = await appointmentsResponse.json();
+      setAppointments(appointmentsData);
+
     } catch (err) {
-      console.error('Error fetching blood requests:', err);
+      console.error('Error fetching staff data:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -40,11 +52,11 @@ const BloodBankStaffDashboard = ({ userId }) => {
   };
 
   useEffect(() => {
-    fetchRequests();
-  }, [userId]); // Re-fetch requests if userId changes
+    fetchStaffData();
+  }, [userId]);
 
-  const handleStatusUpdate = async (requestId, newStatus) => {
-    setActionStatus('Updating status...');
+  const handleRequestStatusUpdate = async (requestId, newStatus) => {
+    setActionStatus('Updating request status...');
     const token = localStorage.getItem('token');
 
     try {
@@ -59,13 +71,13 @@ const BloodBankStaffDashboard = ({ userId }) => {
 
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.msg || 'Failed to update status');
+        throw new Error(errData.msg || 'Failed to update request status');
       }
 
       setActionStatus(`Request status updated to ${newStatus}!`);
-      fetchRequests(); // Re-fetch all requests to update the list
+      fetchStaffData(); // Re-fetch all data to update lists
     } catch (err) {
-      console.error('Error updating status:', err);
+      console.error('Error updating request status:', err);
       setActionStatus(`Error: ${err.message}`);
     } finally {
       setTimeout(() => setActionStatus(''), 3000);
@@ -103,7 +115,7 @@ const BloodBankStaffDashboard = ({ userId }) => {
       setActionStatus('Request fulfilled successfully!');
       setSelectedRequest(null); // Close modal
       setAssignedUnitIds(''); // Clear input
-      fetchRequests(); // Re-fetch all requests
+      fetchStaffData(); // Re-fetch all data
     } catch (err) {
       console.error('Error fulfilling request:', err);
       setActionStatus(`Error: ${err.message}`);
@@ -112,7 +124,37 @@ const BloodBankStaffDashboard = ({ userId }) => {
     }
   };
 
-  if (loading) return <DashboardContainer title="Blood Bank Staff Dashboard"><p className="text-center">Loading requests...</p></DashboardContainer>;
+  const handleAppointmentStatusUpdate = async (appointmentId, newStatus) => {
+    setActionStatus('Updating appointment status...');
+    const token = localStorage.getItem('token');
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/appointments/${appointmentId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.msg || 'Failed to update appointment status');
+      }
+
+      setActionStatus(`Appointment status updated to ${newStatus}!`);
+      fetchStaffData(); // Re-fetch all data to update lists
+    } catch (err) {
+      console.error('Error updating appointment status:', err);
+      setActionStatus(`Error: ${err.message}`);
+    } finally {
+      setTimeout(() => setActionStatus(''), 3000);
+    }
+  };
+
+
+  if (loading) return <DashboardContainer title="Blood Bank Staff Dashboard"><p className="text-center">Loading staff data...</p></DashboardContainer>;
   if (error) return <DashboardContainer title="Blood Bank Staff Dashboard"><p className="text-center text-red-500">Error: {error}</p></DashboardContainer>;
 
   return (
@@ -127,7 +169,7 @@ const BloodBankStaffDashboard = ({ userId }) => {
       )}
 
       {/* All Blood Requests List */}
-      <div className="p-6 border border-gray-200 rounded-xl shadow-md">
+      <div className="mb-8 p-6 border border-gray-200 rounded-xl shadow-md">
         <h3 className="text-2xl font-bold text-gray-900 mb-4">All Blood Requests</h3>
         {requests.length === 0 ? (
           <p className="text-gray-600">No blood requests found.</p>
@@ -167,16 +209,15 @@ const BloodBankStaffDashboard = ({ userId }) => {
                     <td className="py-2 px-4 text-sm text-gray-800 space-x-2">
                       {req.status === 'Pending' && (
                         <>
-                          <button onClick={() => handleStatusUpdate(req._id, 'Approved')} className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600">Approve</button>
-                          <button onClick={() => handleStatusUpdate(req._id, 'Rejected')} className="bg-red-500 text-white px-3 py-1 rounded-full text-xs hover:bg-red-600">Reject</button>
+                          <button onClick={() => handleRequestStatusUpdate(req._id, 'Approved')} className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600">Approve</button>
+                          <button onClick={() => handleRequestStatusUpdate(req._id, 'Rejected')} className="bg-red-500 text-white px-3 py-1 rounded-full text-xs hover:bg-red-600">Reject</button>
                         </>
                       )}
                       {req.status === 'Approved' && (
                         <button onClick={() => setSelectedRequest(req)} className="bg-green-500 text-white px-3 py-1 rounded-full text-xs hover:bg-green-600">Fulfill</button>
                       )}
-                      {/* Optionally add Cancel button for any status before Fulfilled */}
                       {['Pending', 'Approved'].includes(req.status) && (
-                         <button onClick={() => handleStatusUpdate(req._id, 'Cancelled')} className="bg-gray-500 text-white px-3 py-1 rounded-full text-xs hover:bg-gray-600">Cancel</button>
+                         <button onClick={() => handleRequestStatusUpdate(req._id, 'Cancelled')} className="bg-gray-500 text-white px-3 py-1 rounded-full text-xs hover:bg-gray-600">Cancel</button>
                       )}
                     </td>
                   </tr>
@@ -187,7 +228,56 @@ const BloodBankStaffDashboard = ({ userId }) => {
         )}
       </div>
 
-      {/* Fulfill Request Modal */}
+      {/* All Appointments List */}
+      <div className="p-6 border border-gray-200 rounded-xl shadow-md mt-8">
+        <h3 className="text-2xl font-bold text-gray-900 mb-4">All Appointments</h3>
+        {appointments.length === 0 ? (
+          <p className="text-gray-600">No appointments found.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white rounded-lg overflow-hidden shadow-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Donor</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Date & Time</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Blood Bank</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Blood Group</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Status</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-gray-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {appointments.map(app => (
+                  <tr key={app._id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50">
+                    <td className="py-2 px-4 text-sm text-gray-800">{app.donor ? `${app.donor.firstName} (${app.donor.email})` : 'N/A'}</td>
+                    <td className="py-2 px-4 text-sm text-gray-800">{new Date(app.appointmentDate).toLocaleString()}</td>
+                    <td className="py-2 px-4 text-sm text-gray-800">{app.bloodBank?.name || 'N/A'}</td>
+                    <td className="py-2 px-4 text-sm text-gray-800">{app.bloodGroup || 'Not specified'}</td>
+                    <td className="py-2 px-4 text-sm text-gray-800">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold
+                        ${app.status === 'Scheduled' ? 'bg-blue-100 text-blue-800' :
+                          app.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                          'bg-red-100 text-red-800'}`}>
+                        {app.status}
+                      </span>
+                    </td>
+                    <td className="py-2 px-4 text-sm text-gray-800 space-x-2">
+                      {app.status === 'Scheduled' && (
+                        <>
+                          <button onClick={() => handleAppointmentStatusUpdate(app._id, 'Completed')} className="bg-green-500 text-white px-3 py-1 rounded-full text-xs hover:bg-green-600">Mark Complete</button>
+                          <button onClick={() => handleAppointmentStatusUpdate(app._id, 'Cancelled')} className="bg-red-500 text-white px-3 py-1 rounded-full text-xs hover:bg-red-600">Cancel</button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Fulfill Request Modal (same as AdminDashboard) */}
       {selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full relative transform scale-95 animate-scale-in">

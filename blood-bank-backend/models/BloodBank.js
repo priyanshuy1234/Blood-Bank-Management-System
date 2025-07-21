@@ -26,14 +26,16 @@ const BloodBankSchema = new mongoose.Schema({
     state: { type: String, required: true, trim: true },
     zipCode: { type: String, required: true, trim: true },
     country: { type: String, required: true, trim: true },
-    // Optional: GeoJSON for location-based queries later
+    // GeoJSON for location-based queries
     location: {
       type: {
         type: String,
-        enum: ['Point'],
+        enum: ['Point'], // GeoJSON Point type
+        default: 'Point',
       },
       coordinates: {
         type: [Number], // [longitude, latitude]
+        default: [0, 0], // Default to [0,0] if not provided
       },
     },
   },
@@ -57,7 +59,8 @@ const BloodBankSchema = new mongoose.Schema({
   timestamps: true // Adds createdAt and updatedAt fields
 });
 
-// Create a 2dsphere index for geospatial queries if location is used
+// Create a 2dsphere index for geospatial queries
+// This index is crucial for performing efficient proximity searches
 BloodBankSchema.index({ 'address.location': '2dsphere' });
 
 // Create the BloodBank Model

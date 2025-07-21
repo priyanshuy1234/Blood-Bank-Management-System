@@ -12,7 +12,8 @@ const jwt = require('jsonwebtoken'); // For creating JSON Web Tokens
 const User = require('./models/User');
 const BloodUnit = require('./models/BloodUnit');
 const BloodBank = require('./models/BloodBank');
-const BloodRequest = require('./models/BloodRequest'); // Import BloodRequest model
+const BloodRequest = require('./models/BloodRequest');
+const Appointment = require('./models/Appointment');
 
 // Import middleware
 const auth = require('./middleware/auth'); // Authentication middleware
@@ -41,76 +42,44 @@ mongoose.connect(mongoURI)
   });
 
 // --- Custom Middleware for Role-Based Authorization ---
-// This middleware checks if the authenticated user has one of the allowed roles
 const authorizeRole = (roles) => {
   return (req, res, next) => {
-    // req.user is populated by the 'auth' middleware
     if (!req.user || !req.user.role) {
       return res.status(401).json({ msg: 'Authorization denied, no user role found' });
     }
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ msg: 'Forbidden: You do not have permission to perform this action' });
     }
-    next(); // User has the required role, proceed to the next middleware/route handler
+    next();
   };
 };
 
 // --- API Routes ---
 
-// Basic Route for testing the server
 app.get('/', (req, res) => {
   res.send('Blood Bank Backend API is running!');
 });
 
+// AUTHENTICATION ROUTES
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
 app.post('/api/auth/register', async (req, res) => {
   const { email, password, role, firstName, lastName, contactNumber, address } = req.body;
-
   try {
-    // 1. Check if user already exists
     let user = await User.findOne({ email });
     if (user) {
       return res.status(400).json({ msg: 'User with this email already exists' });
     }
-
-    // 2. Hash the password
-    const salt = await bcrypt.genSalt(10); // Generate a salt (random string)
-    const hashedPassword = await bcrypt.hash(password, salt); // Hash the password with the salt
-
-    // 3. Create a new user instance
-    user = new User({
-      email,
-      password: hashedPassword, // Store the hashed password
-      role: role || 'donor', // Default to 'donor' if not provided
-      firstName,
-      lastName,
-      contactNumber,
-      address
-    });
-
-    // 4. Save the user to the database
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    user = new User({ email, password: hashedPassword, role: role || 'donor', firstName, lastName, contactNumber, address });
     await user.save();
-
-    // 5. Generate JWT for the registered user (auto-login)
-    const payload = {
-      user: {
-        id: user.id, // MongoDB's unique ID for the user
-        role: user.role
-      }
-    };
-
-    jwt.sign(
-      payload,
-      jwtSecret,
-      { expiresIn: '1h' }, // Token expires in 1 hour
-      (err, token) => {
-        if (err) throw err;
-        res.status(201).json({ msg: 'User registered successfully', token });
-      }
-    );
-
+    const payload = { user: { id: user.id, role: user.role } };
+    jwt.sign(payload, jwtSecret, { expiresIn: '1h' }, (err, token) => {
+      if (err) throw err;
+      res.status(201).json({ msg: 'User registered successfully', token });
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error during registration');
@@ -122,51 +91,33 @@ app.post('/api/auth/register', async (req, res) => {
 // @access  Public
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-
   try {
-    // 1. Check if user exists
     let user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ msg: 'Invalid Credentials' }); // Generic message for security
+      return res.status(400).json({ msg: 'Invalid Credentials' });
     }
-
-    // 2. Compare provided password with hashed password in DB
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ msg: 'Invalid Credentials' });
     }
-
-    // 3. Generate JWT for the logged-in user
-    const payload = {
-      user: {
-        id: user.id,
-        role: user.role
-      }
-    };
-
-    jwt.sign(
-      payload,
-      jwtSecret,
-      { expiresIn: '1h' }, // Token expires in 1 hour
-      (err, token) => {
-        if (err) throw err;
-        res.json({ msg: 'Logged in successfully', token });
-      }
-    );
-
+    const payload = { user: { id: user.id, role: user.role } };
+    jwt.sign(payload, jwtSecret, { expiresIn: '1h' }, (err, token) => {
+      if (err) throw err;
+      res.json({ msg: 'Logged in successfully', token });
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error during login');
   }
 });
 
+// PROFILE MANAGEMENT ROUTES
 // @route   GET /api/profile/me
 // @desc    Get current user's profile
 // @access  Private (requires authentication token)
 app.get('/api/profile/me', auth, async (req, res) => {
   try {
-    // req.user is populated by the auth middleware with user id and role
-    const user = await User.findById(req.user.id).select('-password'); // Find user by ID, exclude password field
+    const user = await User.findById(req.user.id).select('-password');
     if (!user) {
       return res.status(404).json({ msg: 'User profile not found' });
     }
@@ -182,8 +133,6 @@ app.get('/api/profile/me', auth, async (req, res) => {
 // @access  Private (requires authentication token)
 app.put('/api/profile/me', auth, async (req, res) => {
   const { firstName, lastName, contactNumber, address } = req.body;
-
-  // Build profile object
   const profileFields = {};
   if (firstName) profileFields.firstName = firstName;
   if (lastName) profileFields.lastName = lastName;
@@ -196,56 +145,106 @@ app.put('/api/profile/me', auth, async (req, res) => {
     if (address.zipCode) profileFields.address.zipCode = address.zipCode;
     if (address.country) profileFields.address.country = address.country;
   }
-
   try {
     let user = await User.findById(req.user.id);
-
     if (user) {
-      // Update existing user profile
-      user = await User.findOneAndUpdate(
-        { _id: req.user.id },
-        { $set: profileFields }, // $set updates only the provided fields
-        { new: true } // Return the updated document
-      ).select('-password'); // Exclude password from response
-
+      user = await User.findOneAndUpdate({ _id: req.user.id }, { $set: profileFields }, { new: true }).select('-password');
       return res.json({ msg: 'Profile updated successfully', user });
     }
-
     res.status(404).json({ msg: 'User not found' });
-
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error updating profile');
   }
 });
 
+// DONOR ELIGIBILITY ROUTES
+// @route   PUT /api/profile/eligibility
+// @desc    Submit donor eligibility questionnaire / update eligibility status
+// @access  Private (Donor only)
+app.put('/api/profile/eligibility', auth, authorizeRole(['donor']), async (req, res) => {
+  const { bloodType, lastDonationDate, medicalHistory } = req.body;
+  try {
+    let user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'Donor profile not found' });
+    }
+    if (user.role !== 'donor') {
+      return res.status(403).json({ msg: 'Forbidden: Only donor accounts can submit eligibility.' });
+    }
+    if (bloodType) user.bloodType = bloodType;
+    if (lastDonationDate) user.lastDonationDate = new Date(lastDonationDate);
+    if (medicalHistory) {
+      user.medicalHistory = {
+        hasChronicIllness: medicalHistory.hasChronicIllness || false,
+        recentTravelToRiskArea: medicalHistory.recentTravelToRiskArea || false,
+        recentSurgery: medicalHistory.recentSurgery || false,
+        onMedication: medicalHistory.onMedication || false,
+        notes: medicalHistory.notes || ''
+      };
+      if (user.medicalHistory.hasChronicIllness || user.medicalHistory.recentTravelToRiskArea || user.medicalHistory.recentSurgery) {
+        user.eligibilityStatus = 'Deferred';
+      } else {
+        if (user.lastDonationDate) {
+          const minDaysBetweenDonations = 56;
+          const lastDonationMillis = user.lastDonationDate.getTime();
+          const nowMillis = Date.now();
+          const diffDays = Math.floor((nowMillis - lastDonationMillis) / (1000 * 60 * 60 * 24));
+          if (diffDays < minDaysBetweenDonations) {
+            user.eligibilityStatus = 'Deferred';
+          } else {
+            user.eligibilityStatus = 'Eligible';
+          }
+        } else {
+          user.eligibilityStatus = 'Eligible';
+        }
+      }
+    } else {
+      user.eligibilityStatus = 'Unknown';
+    }
+    await user.save();
+    res.json({ msg: 'Eligibility updated successfully', user });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ msg: 'Server error updating eligibility', error: err.message });
+  }
+});
 
-// --- Blood Bank Routes ---
+// USER MANAGEMENT (FOR ADMIN/STAFF)
+// @route   GET /api/users
+// @desc    Get all users or users by role
+// @access  Private (Admin, Supervisor, Blood Bank Staff)
+app.get('/api/users', auth, authorizeRole(['admin', 'supervisor', 'bloodbank_staff']), async (req, res) => {
+  try {
+    const { role } = req.query;
+    let users;
+    if (role) {
+      users = await User.find({ role: role }).select('-password');
+    } else {
+      users = await User.find().select('-password');
+    }
+    res.json(users);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error fetching users');
+  }
+});
 
+
+// BLOOD BANK ROUTES
 // @route   POST /api/blood-banks
 // @desc    Create a new blood bank
 // @access  Private (Admin only)
 app.post('/api/blood-banks', auth, authorizeRole(['admin']), async (req, res) => {
-  const { name, contactEmail, contactPhone, address } = req.body;
-
+  const { name, contactEmail, contactPhone, address, location } = req.body; // Include location
   try {
-    // Check if a blood bank with the same name or email already exists
     let bloodBank = await BloodBank.findOne({ $or: [{ name }, { contactEmail }] });
     if (bloodBank) {
       return res.status(400).json({ msg: 'Blood bank with this name or email already exists' });
     }
-
-    bloodBank = new BloodBank({
-      name,
-      contactEmail,
-      contactPhone,
-      address,
-      managedBy: req.user.id // Assign the admin who created it as manager
-    });
-
+    bloodBank = new BloodBank({ name, contactEmail, contactPhone, address, location, managedBy: req.user.id });
     await bloodBank.save();
     res.status(201).json({ msg: 'Blood bank created successfully', bloodBank });
-
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error creating blood bank');
@@ -265,29 +264,57 @@ app.get('/api/blood-banks', async (req, res) => {
   }
 });
 
+// Removed the /api/blood-banks/nearby route as it's no longer used by the frontend
+// This route is commented out to ensure no functionality is removed from backend,
+// even if frontend currently uses a direct Google Maps embed.
+/*
+app.get('/api/blood-banks/nearby', async (req, res) => {
+  const { latitude, longitude, maxDistance } = req.query; // maxDistance in meters
 
-// --- Blood Unit Routes ---
+  if (!latitude || !longitude) {
+    return res.status(400).json({ msg: 'Latitude and longitude are required.' });
+  }
 
+  const coords = [parseFloat(longitude), parseFloat(latitude)];
+  const distance = parseInt(maxDistance) || 50000; // Default to 50km (50000 meters) if not provided
+
+  try {
+    const nearbyBloodBanks = await BloodBank.find({
+      'address.location': {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: coords, // [longitude, latitude]
+          },
+          $maxDistance: distance, // distance in meters
+        },
+      },
+    });
+
+    res.json(nearbyBloodBanks);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ msg: 'Server error finding nearby blood banks', error: err.message });
+  }
+});
+*/
+
+
+// BLOOD UNIT ROUTES
 // @route   POST /api/blood-units
 // @desc    Add a new blood unit
 // @access  Private (Blood Bank Staff, Admin)
 app.post('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin']), async (req, res) => {
   const { unitId, bloodGroup, componentType, collectionDate, expiryDate, bloodBankId, donorId } = req.body;
-
   try {
-    // Check if unitId already exists
     let bloodUnit = await BloodUnit.findOne({ unitId });
     if (bloodUnit) {
       return res.status(400).json({ msg: 'Blood unit with this ID already exists' });
     }
-
-    // Check if the bloodBankId provided is valid
     const bloodBankExists = await BloodBank.findById(bloodBankId);
     if (!bloodBankExists) {
       return res.status(404).json({ msg: 'Associated Blood Bank not found' });
     }
-
-    // Validate donorId before querying if it's provided and not null/empty string
     let donorObjectId = null;
     if (donorId) {
       if (!mongoose.Types.ObjectId.isValid(donorId)) {
@@ -297,22 +324,11 @@ app.post('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin']), 
       if (!donorExists || donorExists.role !== 'donor') {
         return res.status(404).json({ msg: 'Associated Donor not found or is not a donor role' });
       }
-      donorObjectId = donorExists._id; // Use the actual ObjectId from the found donor
+      donorObjectId = donorExists._id;
     }
-
-    bloodUnit = new BloodUnit({
-      unitId,
-      bloodGroup,
-      componentType,
-      collectionDate,
-      expiryDate,
-      bloodBank: bloodBankId, // Store the ObjectId of the blood bank
-      donor: donorObjectId // Store the ObjectId of the donor (will be null if not provided/invalid)
-    });
-
+    bloodUnit = new BloodUnit({ unitId, bloodGroup, componentType, collectionDate, expiryDate, bloodBank: bloodBankId, donor: donorObjectId });
     await bloodUnit.save();
     res.status(201).json({ msg: 'Blood unit added successfully', bloodUnit });
-
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ msg: 'Server error adding blood unit', error: err.message });
@@ -324,7 +340,6 @@ app.post('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin']), 
 // @access  Private (Blood Bank Staff, Admin, Supervisor)
 app.get('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin', 'supervisor']), async (req, res) => {
   try {
-    // Populate bloodBank and donor fields to get their details, not just IDs
     const bloodUnits = await BloodUnit.find().populate('bloodBank', 'name').populate('donor', 'firstName lastName email');
     res.json(bloodUnits);
   } catch (err) {
@@ -339,30 +354,16 @@ app.get('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin', 'su
 app.get('/api/blood-units/inventory-summary', async (req, res) => {
   try {
     const summary = await BloodUnit.aggregate([
-      { $match: { status: 'Available' } }, // Only count available units
-      {
-        $group: {
-          _id: '$bloodGroup', // Group by bloodGroup
-          count: { $sum: 1 } // Count units in each group
-        }
-      },
-      {
-        $project: {
-          _id: 0, // Exclude _id from the final output
-          bloodGroup: '$_id', // Rename _id to bloodGroup
-          count: 1
-        }
-      },
-      { $sort: { bloodGroup: 1 } } // Sort by blood group
+      { $match: { status: 'Available' } },
+      { $group: { _id: '$bloodGroup', count: { $sum: 1 } } },
+      { $project: { _id: 0, bloodGroup: '$_id', count: 1 } },
+      { $sort: { bloodGroup: 1 } }
     ]);
-
-    // Initialize all blood groups to 0 if not present in summary
     const allBloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
     const finalSummary = allBloodGroups.map(group => {
       const found = summary.find(item => item.bloodGroup === group);
       return { bloodGroup: group, count: found ? found.count : 0 };
     });
-
     res.json(finalSummary);
   } catch (err) {
     console.error(err.message);
@@ -370,29 +371,22 @@ app.get('/api/blood-units/inventory-summary', async (req, res) => {
   }
 });
 
-
 // @route   PUT /api/blood-units/:id
 // @desc    Update a blood unit's status or details
 // @access  Private (Blood Bank Staff, Admin)
 app.put('/api/blood-units/:id', auth, authorizeRole(['bloodbank_staff', 'admin']), async (req, res) => {
-  const { status, recipient, request } = req.body; // Can update status, assign recipient/request
-  const unitId = req.params.id; // This is the MongoDB _id of the BloodUnit
-
+  const { status, recipient, request } = req.body;
+  const unitId = req.params.id;
   try {
-    let bloodUnit = await BloodUnit.findById(unitId); 
-
+    let bloodUnit = await BloodUnit.findById(unitId);
     if (!bloodUnit) {
-      // If not found by _id, try finding by the custom 'unitId' field (e.g., "BBUNIT001")
       bloodUnit = await BloodUnit.findOne({ unitId: unitId });
       if (!bloodUnit) {
         return res.status(404).json({ msg: 'Blood unit not found' });
       }
     }
-
-    // Build update object
     const updateFields = {};
     if (status) updateFields.status = status;
-    // Validate and assign recipient/request if provided
     if (recipient) {
       if (!mongoose.Types.ObjectId.isValid(recipient)) {
         return res.status(400).json({ msg: 'Invalid Recipient User ID format' });
@@ -405,16 +399,8 @@ app.put('/api/blood-units/:id', auth, authorizeRole(['bloodbank_staff', 'admin']
       }
       updateFields.request = request;
     }
-
-    // Perform the update
-    bloodUnit = await BloodUnit.findOneAndUpdate(
-      { _id: bloodUnit._id }, // Use the actual _id found
-      { $set: updateFields },
-      { new: true } // Return the updated document
-    );
-
+    bloodUnit = await BloodUnit.findOneAndUpdate({ _id: bloodUnit._id }, { $set: updateFields }, { new: true });
     res.json({ msg: 'Blood unit updated successfully', bloodUnit });
-
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error updating blood unit');
@@ -422,23 +408,18 @@ app.put('/api/blood-units/:id', auth, authorizeRole(['bloodbank_staff', 'admin']
 });
 
 
-// --- Blood Request Routes ---
-
+// BLOOD REQUEST ROUTES
 // @route   POST /api/blood-requests
 // @desc    Create a new blood request
 // @access  Private (Hospital, Doctor)
 app.post('/api/blood-requests', auth, authorizeRole(['hospital', 'doctor']), async (req, res) => {
   const { bloodGroup, componentType, quantity, urgency, notes, doctorId } = req.body;
-
   try {
-    // Ensure the user making the request is a hospital or doctor
     const hospitalId = req.user.role === 'hospital' ? req.user.id : null;
     let doctorObjectId = null;
-
-    // If the user is a doctor, their ID is the doctorObjectId
     if (req.user.role === 'doctor') {
       doctorObjectId = req.user.id;
-    } else if (doctorId) { // If user is hospital and provides a doctorId
+    } else if (doctorId) {
       if (!mongoose.Types.ObjectId.isValid(doctorId)) {
         return res.status(400).json({ msg: 'Invalid Doctor User ID format' });
       }
@@ -448,25 +429,20 @@ app.post('/api/blood-requests', auth, authorizeRole(['hospital', 'doctor']), asy
       }
       doctorObjectId = doctorExists._id;
     }
-
-    // Generate a unique requestId
     const generatedRequestId = `REQ-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
     const newRequest = new BloodRequest({
-      requestId: generatedRequestId, // Assign the generated unique ID
+      requestId: generatedRequestId,
       hospital: hospitalId,
-      doctor: doctorObjectId, // Assign doctor based on role or provided ID
+      doctor: doctorObjectId,
       bloodGroup,
       componentType,
       quantity,
       urgency,
       notes,
-      requestDate: Date.now() // Set request date
+      requestDate: Date.now()
     });
-
     await newRequest.save();
     res.status(201).json({ msg: 'Blood request created successfully', request: newRequest });
-
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ msg: 'Server error creating blood request', error: err.message });
@@ -479,10 +455,9 @@ app.post('/api/blood-requests', auth, authorizeRole(['hospital', 'doctor']), asy
 app.get('/api/blood-requests', auth, authorizeRole(['bloodbank_staff', 'supervisor', 'admin']), async (req, res) => {
   try {
     const requests = await BloodRequest.find()
-      .populate('hospital', 'firstName lastName email') // Populate hospital user details
-      .populate('doctor', 'firstName lastName email') // Populate doctor user details
-      .populate('assignedUnits', 'unitId bloodGroup componentType'); // Populate assigned units
-
+      .populate('hospital', 'firstName lastName email')
+      .populate('doctor', 'firstName lastName email')
+      .populate('assignedUnits', 'unitId bloodGroup componentType');
     res.json(requests);
   } catch (err) {
     console.error(err.message);
@@ -518,27 +493,22 @@ app.get('/api/blood-requests/my', auth, authorizeRole(['hospital', 'doctor']), a
 // @desc    Update status of a blood request
 // @access  Private (Blood Bank Staff, Supervisor, Admin)
 app.put('/api/blood-requests/:id/status', auth, authorizeRole(['bloodbank_staff', 'supervisor', 'admin']), async (req, res) => {
-  const requestId = req.params.id; // This is the MongoDB _id of the BloodRequest
+  const requestId = req.params.id;
   const { status } = req.body;
-
   try {
     let request = await BloodRequest.findById(requestId);
     if (!request) {
       return res.status(404).json({ msg: 'Blood request not found' });
     }
-
     if (!['Approved', 'Rejected', 'Fulfilled', 'Cancelled'].includes(status)) {
       return res.status(400).json({ msg: 'Invalid status provided' });
     }
-
     request.status = status;
     if (status === 'Fulfilled') {
       request.fulfillmentDate = Date.now();
     }
-
     await request.save();
     res.json({ msg: `Request status updated to ${status}`, request });
-
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error updating request status');
@@ -549,65 +519,114 @@ app.put('/api/blood-requests/:id/status', auth, authorizeRole(['bloodbank_staff'
 // @desc    Fulfill a blood request by assigning units
 // @access  Private (Blood Bank Staff, Admin)
 app.put('/api/blood-requests/:id/fulfill', auth, authorizeRole(['bloodbank_staff', 'admin']), async (req, res) => {
-  const requestId = req.params.id; // This is the MongoDB _id of the BloodRequest
-  const { assignedUnitIds } = req.body; // Array of BloodUnit ObjectIds
-
+  const requestId = req.params.id;
+  const { assignedUnitIds } = req.body;
   if (!Array.isArray(assignedUnitIds) || assignedUnitIds.length === 0) {
     return res.status(400).json({ msg: 'Please provide an array of assignedUnitIds' });
   }
-
   try {
     let request = await BloodRequest.findById(requestId);
     if (!request) {
       return res.status(404).json({ msg: 'Blood request not found' });
     }
-
-    // Check if the request is already fulfilled or cancelled
     if (request.status === 'Fulfilled' || request.status === 'Cancelled') {
       return res.status(400).json({ msg: `Request is already ${request.status}. Cannot fulfill again.` });
     }
-
-    // Validate if all assignedUnitIds are valid ObjectIds and exist as 'Available' blood units
     const validUnitObjectIds = assignedUnitIds.filter(id => mongoose.Types.ObjectId.isValid(id));
     if (validUnitObjectIds.length !== assignedUnitIds.length) {
       return res.status(400).json({ msg: 'One or more assignedUnitIds are invalid format.' });
     }
-
-    const unitsToAssign = await BloodUnit.find({
-      _id: { $in: validUnitObjectIds },
-      status: 'Available'
-    });
-
+    const unitsToAssign = await BloodUnit.find({ _id: { $in: validUnitObjectIds }, status: 'Available' });
+    if (unitsToAssign.length < assignedUnitIds.length) {
+      return res.status(400).json({ msg: 'One or more assigned units are not found or not available.' });
+    }
     if (unitsToAssign.length < request.quantity) {
       return res.status(400).json({ msg: `Not enough available units provided. Requested: ${request.quantity}, Provided: ${unitsToAssign.length}` });
     }
-
-    // Check if the assigned units match the requested blood group and component type
     for (const unit of unitsToAssign) {
       if (unit.bloodGroup !== request.bloodGroup || unit.componentType !== request.componentType) {
         return res.status(400).json({ msg: `Assigned unit ${unit.unitId} does not match requested blood group/component type.` });
       }
     }
-
-    // Update the status of the assigned blood units to 'Used' or 'Reserved'
-    // For simplicity, let's set to 'Used' upon fulfillment.
     const unitUpdatePromises = unitsToAssign.map(unit =>
       BloodUnit.findByIdAndUpdate(unit._id, { status: 'Used', recipient: request.hospital, request: request._id }, { new: true })
     );
     await Promise.all(unitUpdatePromises);
-
-    // Update the blood request
     request.status = 'Fulfilled';
     request.fulfillmentDate = Date.now();
-    request.assignedUnits = unitsToAssign.map(unit => unit._id); // Store ObjectIds of assigned units
-
+    request.assignedUnits = unitsToAssign.map(unit => unit._id);
     await request.save();
-
     res.json({ msg: 'Blood request fulfilled successfully', request });
-
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ msg: 'Server error fulfilling blood request', error: err.message });
+  }
+});
+
+
+// APPOINTMENT ROUTES
+app.post('/api/appointments', auth, authorizeRole(['donor']), async (req, res) => {
+  const { bloodBank, appointmentDate, bloodGroup, notes } = req.body;
+  try {
+    if (req.user.role !== 'donor') {
+      return res.status(403).json({ msg: 'Forbidden: Only donors can book appointments.' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(bloodBank)) {
+      return res.status(400).json({ msg: 'Invalid Blood Bank ID format.' });
+    }
+    const bloodBankExists = await BloodBank.findById(bloodBank);
+    if (!bloodBankExists) {
+      return res.status(404).json({ msg: 'Blood Bank not found.' });
+    }
+    const newAppointment = new Appointment({ donor: req.user.id, bloodBank, appointmentDate: new Date(appointmentDate), bloodGroup, notes });
+    await newAppointment.save();
+    res.status(201).json({ msg: 'Appointment booked successfully', appointment: newAppointment });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ msg: 'Server error booking appointment', error: err.message });
+  }
+});
+
+app.get('/api/appointments/my', auth, authorizeRole(['donor']), async (req, res) => {
+  try {
+    const appointments = await Appointment.find({ donor: req.user.id })
+      .populate('bloodBank', 'name contactEmail address');
+    res.json(appointments);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error fetching donor appointments');
+  }
+});
+
+app.get('/api/appointments', auth, authorizeRole(['bloodbank_staff', 'supervisor', 'admin']), async (req, res) => {
+  try {
+    const appointments = await Appointment.find()
+      .populate('donor', 'firstName lastName email contactNumber')
+      .populate('bloodBank', 'name contactEmail address');
+    res.json(appointments);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error fetching all appointments');
+  }
+});
+
+app.put('/api/appointments/:id/status', auth, authorizeRole(['bloodbank_staff', 'supervisor', 'admin']), async (req, res) => {
+  const appointmentId = req.params.id;
+  const { status } = req.body;
+  try {
+    let appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ msg: 'Appointment not found' });
+    }
+    if (!['Scheduled', 'Completed', 'Cancelled', 'No-Show'].includes(status)) {
+      return res.status(400).json({ msg: 'Invalid status provided' });
+    }
+    appointment.status = status;
+    await appointment.save();
+    res.json({ msg: `Appointment status updated to ${status}`, appointment });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error updating appointment status');
   }
 });
 

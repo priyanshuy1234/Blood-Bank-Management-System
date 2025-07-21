@@ -1,9 +1,10 @@
 import React from 'react';
 import StatCard from '../components/StatCard';
-import StepCard from '../components/StepCard';
+import StepCard from '../components/StepCard'; // Corrected import path
 import TestimonialCard from '../components/TestimonialCard';
 
-const HomePage = () => (
+// HomePage now accepts a 'navigateTo' prop from App.js
+const HomePage = ({ navigateTo }) => (
   <div className="container mx-auto px-4 py-12 md:py-24 text-center">
     <section className="hero-section mb-20 animate-fade-in-up">
       <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 leading-tight mb-6">
@@ -13,10 +14,18 @@ const HomePage = () => (
         Every drop counts. Join our mission to connect donors with those in need and and make a difference in the world.
       </p>
       <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
-        <button className="px-8 py-4 bg-red-600 text-white font-bold rounded-full shadow-lg hover:bg-red-700 transition-all duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
+        {/* Button to navigate to Find Blood Banks page */}
+        <button
+          onClick={() => navigateTo('find-blood-banks')}
+          className="px-8 py-4 bg-red-600 text-white font-bold rounded-full shadow-lg hover:bg-red-700 transition-all duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105"
+        >
           Find a Donation Camp
         </button>
-        <button className="px-8 py-4 bg-white text-red-600 border-2 border-red-600 font-bold rounded-full shadow-lg hover:bg-red-50 transition-all duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
+        {/* Button to navigate to Login/Register page */}
+        <button
+          onClick={() => navigateTo('login')}
+          className="px-8 py-4 bg-white text-red-600 border-2 border-red-600 font-bold rounded-full shadow-lg hover:bg-red-50 transition-all duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105"
+        >
           Request Blood
         </button>
       </div>
@@ -55,4 +64,4 @@ const HomePage = () => (
   </div>
 );
 
-export default HomePage; // <-- THIS LINE IS CRUCIAL
+export default HomePage;

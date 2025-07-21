@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 
 // --- Import Reusable Components ---
 import NavItem from './components/NavItem';
-// StatCard, StepCard, TestimonialCard, TeamMemberCard are imported by their respective pages (HomePage, AboutPage)
-import DashboardContainer from './components/DashboardContainer'; // Imported by all dashboards
+import DashboardContainer from './components/DashboardContainer';
 
 // --- Import Public Page Components ---
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import GalleryPage from './pages/GalleryPage';
-import LoginPage from './pages/LoginPage'; // Correctly importing the full LoginPage component
+import LoginPage from './pages/LoginPage';
+import FindBloodBanksPage from './pages/FindBloodBanksPage';
 
 // --- Import Dashboard Components ---
 import DonorDashboard from './dashboards/DonorDashboard';
@@ -51,17 +51,14 @@ const App = () => {
     const storedToken = localStorage.getItem('token');
     if (storedToken) {
       try {
-        // Basic JWT decode: get payload (middle part), base64 decode, then parse JSON
         const payload = JSON.parse(atob(storedToken.split('.')[1]));
         if (payload && payload.user && payload.user.id && payload.user.role) {
           setToken(storedToken);
           setUser({ id: payload.user.id, role: payload.user.role });
-          // If a token exists and is valid, default to dashboard if not on a public page
-          if (!['home', 'about', 'contact', 'gallery', 'login'].includes(currentPage)) {
-              navigateTo(payload.user.role + '_dashboard'); // Navigate to their specific dashboard
+          if (!['home', 'about', 'contact', 'gallery', 'login', 'find-blood-banks'].includes(currentPage)) {
+              navigateTo(payload.user.role + '_dashboard');
           }
         } else {
-          // Invalid token structure
           console.error("Invalid token structure in localStorage.");
           localStorage.removeItem('token');
           setToken(null);
@@ -69,19 +66,19 @@ const App = () => {
         }
       } catch (e) {
         console.error("Failed to decode or parse token from localStorage:", e);
-        localStorage.removeItem('token'); // Clear invalid token
+        localStorage.removeItem('token');
         setToken(null);
         setUser(null);
       }
     }
-  }, [currentPage]); // Added currentPage to dependencies to re-evaluate navigation on page change
+  }, [currentPage]);
 
   // Function to handle user login (passed to LoginPage)
   const handleLogin = (jwtToken, userData) => {
     localStorage.setItem('token', jwtToken);
     setToken(jwtToken);
-    setUser(userData); // Set user data { id, role }
-    navigateTo(userData.role + '_dashboard'); // Redirect to their specific dashboard
+    setUser(userData);
+    navigateTo(userData.role + '_dashboard');
     console.log('Logged in successfully, token stored. User role:', userData.role);
   };
 
@@ -90,21 +87,19 @@ const App = () => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
-    navigateTo('home'); // Redirect to home page after logout
+    navigateTo('home');
     console.log('User logged out.');
   };
 
   // Conditional rendering for pages based on current page and user role
   const renderPage = () => {
-    // If user is logged in, and tries to go to login page, redirect to their dashboard
     if (currentPage === 'login' && token) {
-      return user ? renderDashboard(user.role) : <HomePage />; // Redirect to dashboard if user data is available
+      return user ? renderDashboard(user.role) : <HomePage />;
     }
 
-    // Render public pages
     switch (currentPage) {
       case 'home':
-        return <HomePage />;
+        return <HomePage navigateTo={navigateTo} />; {/* Pass navigateTo to HomePage */}
       case 'about':
         return <AboutPage />;
       case 'contact':
@@ -113,13 +108,13 @@ const App = () => {
         return <GalleryPage />;
       case 'login':
         return <LoginPage onLogin={handleLogin} />;
+      case 'find-blood-banks':
+        return <FindBloodBanksPage />;
       default:
-        // If logged in, try to render dashboard based on role
         if (token && user) {
           return renderDashboard(user.role);
         }
-        // Fallback for unknown pages or not logged in
-        return <HomePage />;
+        return <HomePage navigateTo={navigateTo} />; {/* Pass navigateTo to HomePage */}
     }
   };
 
@@ -155,14 +150,14 @@ const App = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex space-x-8 items-center">
+          <div className="hidden md:flex space-x-6 items-center"> {/* Changed space-x-8 to space-x-6 */}
             <NavItem onClick={() => navigateTo('home')} isActive={currentPage === 'home'}>Home</NavItem>
             <NavItem onClick={() => navigateTo('about')} isActive={currentPage === 'about'}>About Us</NavItem>
             <NavItem onClick={() => navigateTo('gallery')} isActive={currentPage === 'gallery'}>Gallery</NavItem>
             <NavItem onClick={() => navigateTo('contact')} isActive={currentPage === 'contact'}>Contact Us</NavItem>
+            <NavItem onClick={() => navigateTo('find-blood-banks')} isActive={currentPage === 'find-blood-banks'}>Find Blood Banks</NavItem>
             {token ? (
               <>
-                {/* Dashboard link based on user role */}
                 <NavItem onClick={() => navigateTo(user.role + '_dashboard')} isActive={currentPage.includes('_dashboard')}>
                   {user ? `${user.role.charAt(0).toUpperCase() + user.role.slice(1)} Dashboard` : 'Dashboard'}
                 </NavItem>
@@ -205,6 +200,7 @@ const App = () => {
           <NavItem onClick={() => navigateTo('about')} isActive={currentPage === 'about'}>About Us</NavItem>
           <NavItem onClick={() => navigateTo('gallery')} isActive={currentPage === 'gallery'}>Gallery</NavItem>
           <NavItem onClick={() => navigateTo('contact')} isActive={() => navigateTo('contact')}>Contact Us</NavItem>
+          <NavItem onClick={() => navigateTo('find-blood-banks')} isActive={currentPage === 'find-blood-banks'}>Find Blood Banks</NavItem>
           {token ? (
             <>
               <NavItem onClick={() => navigateTo(user.role + '_dashboard')} isActive={currentPage.includes('_dashboard')}>
@@ -229,7 +225,7 @@ const App = () => {
       )}
 
       {/* Page Content */}
-      <main className="pt-20 pb-16"> {/* Adjust padding to accommodate fixed navbar and footer */}
+      <main className="pt-20 pb-16">
         {renderPage()}
       </main>
 
@@ -250,7 +246,6 @@ const App = () => {
 
 
 // Tailwind CSS Configuration and Custom Animations (included directly for Canvas)
-// In a real project, these would be in tailwind.config.js and a separate CSS file.
 const tailwindConfig = `
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -293,17 +288,12 @@ const tailwindConfig = `
             '0%': { transform: 'rotate(-90deg) scale(0)', opacity: '0' },
             '100%': { transform: 'rotate(0deg) scale(1)', opacity: '1' },
           },
-          'scale-in': {
-            '0%': { transform: 'scale(0.9)', opacity: '0' },
-            '100%': { transform: 'scale(1)', opacity: '1' },
-          },
         },
         animation: {
           'fade-in': 'fade-in 0.5s ease-out forwards',
           'fade-in-up': 'fade-in-up 0.7s ease-out forwards',
           'bounce-in': 'bounce-in 0.8s ease-out forwards',
           'rotate-in': 'rotate-in 0.6s ease-out forwards',
-          'scale-in': 'scale-in 0.3s ease-out forwards',
         },
       },
     },
