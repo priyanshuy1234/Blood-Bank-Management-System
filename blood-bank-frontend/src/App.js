@@ -20,6 +20,9 @@ import BloodBankStaffDashboard from './dashboards/BloodBankStaffDashboard';
 import SupervisorDashboard from './dashboards/SupervisorDashboard';
 import AdminDashboard from './dashboards/AdminDashboard';
 
+// NEW: Import Chatbot component
+import Chatbot from './components/Chatbot';
+
 
 // Main App Component
 const App = () => {
@@ -94,12 +97,12 @@ const App = () => {
   // Conditional rendering for pages based on current page and user role
   const renderPage = () => {
     if (currentPage === 'login' && token) {
-      return user ? renderDashboard(user.role) : <HomePage />;
+      return user ? renderDashboard(user.role) : <HomePage navigateTo={navigateTo} />;
     }
 
     switch (currentPage) {
       case 'home':
-        return <HomePage navigateTo={navigateTo} />; {/* Pass navigateTo to HomePage */}
+        return <HomePage navigateTo={navigateTo} />;
       case 'about':
         return <AboutPage />;
       case 'contact':
@@ -114,7 +117,7 @@ const App = () => {
         if (token && user) {
           return renderDashboard(user.role);
         }
-        return <HomePage navigateTo={navigateTo} />; {/* Pass navigateTo to HomePage */}
+        return <HomePage navigateTo={navigateTo} />;
     }
   };
 
@@ -150,7 +153,7 @@ const App = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex space-x-6 items-center"> {/* Changed space-x-8 to space-x-6 */}
+          <div className="hidden md:flex space-x-6 items-center">
             <NavItem onClick={() => navigateTo('home')} isActive={currentPage === 'home'}>Home</NavItem>
             <NavItem onClick={() => navigateTo('about')} isActive={currentPage === 'about'}>About Us</NavItem>
             <NavItem onClick={() => navigateTo('gallery')} isActive={currentPage === 'gallery'}>Gallery</NavItem>
@@ -240,6 +243,9 @@ const App = () => {
           <p>&copy; {new Date().getFullYear()} BloodLink. All rights reserved.</p>
         </div>
       </footer>
+
+      {/* Chatbot Component */}
+      <Chatbot /> {/* Integrated Chatbot */}
     </div>
   );
 };
@@ -288,12 +294,18 @@ const tailwindConfig = `
             '0%': { transform: 'rotate(-90deg) scale(0)', opacity: '0' },
             '100%': { transform: 'rotate(0deg) scale(1)', opacity: '1' },
           },
+          // New animation for chatbot pop-up
+          'fade-in-up-chat': {
+            '0%': { opacity: '0', transform: 'translateY(20px) scale(0.9)' },
+            '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+          },
         },
         animation: {
           'fade-in': 'fade-in 0.5s ease-out forwards',
           'fade-in-up': 'fade-in-up 0.7s ease-out forwards',
           'bounce-in': 'bounce-in 0.8s ease-out forwards',
           'rotate-in': 'rotate-in 0.6s ease-out forwards',
+          'fade-in-up-chat': 'fade-in-up-chat 0.3s ease-out forwards',
         },
       },
     },
