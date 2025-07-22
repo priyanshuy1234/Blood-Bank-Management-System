@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import donationDrive1Img from '../assets/images/donationDrive1.png'; 
 
 const GalleryPage = () => {
   const images = [
-    { src: "https://via.placeholder.com/600x400/FFD166/FFFFFF?text=Donation+Drive+1", alt: "Donation Drive 1", title: "Community Donation Drive" },
+    { src: donationDrive1Img.png, alt: "Donation Drive 1", title: "Community Donation Drive" },
     { src: "https://via.placeholder.com/600x400/06D6A0/FFFFFF?text=Awareness+Event+2", alt: "Awareness Event 2", title: "Blood Awareness Campaign" },
     { src: "https://via.placeholder.com/600x400/118AB2/FFFFFF?text=Volunteer+Work+3", alt: "Volunteer Work 3", title: "Volunteers in Action" },
     { src: "https://via.placeholder.com/600x400/FF6B6B/FFFFFF?text=Success+Story+4", alt: "Success Story 4", title: "Impactful Donations" },
