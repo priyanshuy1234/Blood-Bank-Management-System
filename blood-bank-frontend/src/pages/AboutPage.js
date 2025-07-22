@@ -1,7 +1,10 @@
 import React from 'react';
 import TeamMemberCard from '../components/TeamMemberCard';
+<<<<<<< HEAD
 import missionImg from '../assets/images/missionImg.png';
 import visionImg from '../assets/images/visionImg.png';
+=======
+>>>>>>> ffbf71d91ab65be5ab3f2c82168ea6908ca882b4
 
 const AboutPage = () => (
   <div className="container mx-auto px-4 py-12 md:py-24 animate-fade-in">
@@ -9,7 +12,11 @@ const AboutPage = () => (
 
     <section className="mb-16 flex flex-col md:flex-row items-center md:space-x-12">
       <div className="md:w-1/2 mb-8 md:mb-0">
+<<<<<<< HEAD
         <img src={missionImg} alt="Our Mission" className="rounded-xl shadow-lg w-full max-w-md h-115 object-cover transform hover:scale-102 transition-transform duration-300" />
+=======
+        <img src="https://via.placeholder.com/600x400/FF6B6B/FFFFFF?text=Our+Mission" alt="Our Mission" className="rounded-xl shadow-lg w-full h-auto object-cover transform hover:scale-102 transition-transform duration-300" />
+>>>>>>> ffbf71d91ab65be5ab3f2c82168ea6908ca882b4
       </div>
       <div className="md:w-1/2">
         <h2 className="text-4xl font-bold text-gray-900 mb-6">Our Mission</h2>
@@ -26,14 +33,22 @@ const AboutPage = () => (
       <div className="md:w-1/2">
         <h2 className="text-4xl font-bold text-gray-900 mb-6">Our Vision</h2>
         <p className="text-lg text-gray-700 leading-relaxed mb-4">
+<<<<<<< HEAD
           We strive to be the leading platform for blood management, fostering a community of compassionate donors and efficient healthcare providers.
+=======
+          To envision a world where no life is lost due to lack of blood. We strive to be the leading platform for blood management, fostering a community of compassionate donors and efficient healthcare providers.
+>>>>>>> ffbf71d91ab65be5ab3f2c82168ea6908ca882b4
         </p>
         <p className="text-lg text-gray-700 leading-relaxed">
           Through continuous innovation and user-centric design, we aim to set new standards in blood bank operations, making a profound impact on public health globally.
         </p>
       </div>
       <div className="md:w-1/2 mb-8 md:mb-0">
+<<<<<<< HEAD
         <img src={visionImg} alt="Our Vision" className="rounded-xl shadow-lg w-full max-w-md h-auto object-cover transform hover:scale-102 transition-transform duration-300" />
+=======
+        <img src="https://via.placeholder.com/600x400/6B6BFF/FFFFFF?text=Our+Vision" alt="Our Vision" className="rounded-xl shadow-lg w-full h-auto object-cover transform hover:scale-102 transition-transform duration-300" />
+>>>>>>> ffbf71d91ab65be5ab3f2c82168ea6908ca882b4
       </div>
     </section>
 
