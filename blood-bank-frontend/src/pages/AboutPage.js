@@ -1,5 +1,4 @@
 import React from 'react';
-import TeamMemberCard from '../components/TeamMemberCard';
 import missionImg from '../assets/images/missionImg.png';
 import visionImg from '../assets/images/visionImg.png';
 
@@ -34,30 +33,6 @@ const AboutPage = () => (
       </div>
       <div className="md:w-1/2 mb-8 md:mb-0">
         <img src={visionImg} alt="Our Vision" className="rounded-xl shadow-lg w-full max-w-md h-auto object-cover transform hover:scale-102 transition-transform duration-300" />
-      </div>
-    </section>
-
-    <section className="team-section text-center mb-16">
-      <h2 className="text-4xl font-bold text-gray-900 mb-12">Meet Our Team</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        <TeamMemberCard
-          name="Jane Doe"
-          role="Founder & CEO"
-          bio="Visionary leader passionate about healthcare technology."
-          avatarText="JD"
-        />
-        <TeamMemberCard
-          name="John Smith"
-          role="Lead Developer"
-          bio="Crafting robust and scalable solutions for impact."
-          avatarText="JS"
-        />
-        <TeamMemberCard
-          name="Emily White"
-          role="Community Manager"
-          bio="Connecting donors and promoting awareness."
-          avatarText="EW"
-        />
       </div>
     </section>
   </div>
