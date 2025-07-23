@@ -26,7 +26,6 @@ app.use(express.json()); // For parsing JSON request bodies
 
 // --- CORS Configuration ---
 // IMPORTANT: Replace 'https://blood-link-one.vercel.app' with your actual Vercel frontend URL.
-// If you have a custom domain, use that.
 // Include localhost for local development testing.
 app.use(cors({
   origin: ['http://localhost:3000', 'https://blood-link-one.vercel.app'] // Allow requests from both local and deployed frontend
@@ -474,10 +473,16 @@ app.put('/api/blood-requests/:id/status', auth, authorizeRole(['bloodbank_staff'
     if (!['Approved', 'Rejected', 'Fulfilled', 'Cancelled'].includes(status)) {
       return res.status(400).json({ msg: 'Invalid status provided' });
     }
-    request.status = status;
-    if (status === 'Fulfilled') {
-      request.fulfillmentDate = Date.now();
+    // Allow donor to cancel their own appointment
+    if (req.user.role === 'donor' && request.donor && request.donor.toString() === req.user.id && status === 'Cancelled') {
+      request.status = status;
+    } else if (['bloodbank_staff', 'supervisor', 'admin'].includes(req.user.role)) {
+      // Allow staff/admin to change status
+      request.status = status;
+    } else {
+      return res.status(403).json({ msg: 'Forbidden: You do not have permission to perform this action.' });
     }
+
     await request.save();
     res.json({ msg: `Request status updated to ${status}`, request });
   } catch (err) {
