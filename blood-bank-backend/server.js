@@ -23,7 +23,15 @@ const app = express();
 
 // Middleware
 app.use(express.json()); // For parsing JSON request bodies
-app.use(cors()); // Enable CORS for all origins (for development)
+
+// --- CORS Configuration ---
+// IMPORTANT: Replace 'https://blood-link-one.vercel.app' with your actual Vercel frontend URL.
+// If you have a custom domain, use that.
+// Include localhost for local development testing.
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://blood-link-one.vercel.app'] // Allow requests from both local and deployed frontend
+}));
+
 
 // MongoDB Connection URI from .env file
 const mongoURI = process.env.MONGO_URI;
@@ -112,9 +120,6 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // PROFILE MANAGEMENT ROUTES
-// @route   GET /api/profile/me
-// @desc    Get current user's profile
-// @access  Private (requires authentication token)
 app.get('/api/profile/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
@@ -128,9 +133,6 @@ app.get('/api/profile/me', auth, async (req, res) => {
   }
 });
 
-// @route   PUT /api/profile/me
-// @desc    Update current user's profile
-// @access  Private (requires authentication token)
 app.put('/api/profile/me', auth, async (req, res) => {
   const { firstName, lastName, contactNumber, address } = req.body;
   const profileFields = {};
@@ -159,9 +161,6 @@ app.put('/api/profile/me', auth, async (req, res) => {
 });
 
 // DONOR ELIGIBILITY ROUTES
-// @route   PUT /api/profile/eligibility
-// @desc    Submit donor eligibility questionnaire / update eligibility status
-// @access  Private (Donor only)
 app.put('/api/profile/eligibility', auth, authorizeRole(['donor']), async (req, res) => {
   const { bloodType, lastDonationDate, medicalHistory } = req.body;
   try {
@@ -211,9 +210,6 @@ app.put('/api/profile/eligibility', auth, authorizeRole(['donor']), async (req, 
 });
 
 // USER MANAGEMENT (FOR ADMIN/STAFF)
-// @route   GET /api/users
-// @desc    Get all users or users by role
-// @access  Private (Admin, Supervisor, Blood Bank Staff)
 app.get('/api/users', auth, authorizeRole(['admin', 'supervisor', 'bloodbank_staff']), async (req, res) => {
   try {
     const { role } = req.query;
@@ -232,11 +228,8 @@ app.get('/api/users', auth, authorizeRole(['admin', 'supervisor', 'bloodbank_sta
 
 
 // BLOOD BANK ROUTES
-// @route   POST /api/blood-banks
-// @desc    Create a new blood bank
-// @access  Private (Admin only)
 app.post('/api/blood-banks', auth, authorizeRole(['admin']), async (req, res) => {
-  const { name, contactEmail, contactPhone, address, location } = req.body; // Include location
+  const { name, contactEmail, contactPhone, address, location } = req.body;
   try {
     let bloodBank = await BloodBank.findOne({ $or: [{ name }, { contactEmail }] });
     if (bloodBank) {
@@ -251,9 +244,6 @@ app.post('/api/blood-banks', auth, authorizeRole(['admin']), async (req, res) =>
   }
 });
 
-// @route   GET /api/blood-banks
-// @desc    Get all blood banks
-// @access  Public (or All Authenticated Users)
 app.get('/api/blood-banks', async (req, res) => {
   try {
     const bloodBanks = await BloodBank.find();
@@ -264,10 +254,7 @@ app.get('/api/blood-banks', async (req, res) => {
   }
 });
 
-// Removed the /api/blood-banks/nearby route as it's no longer used by the frontend
-// This route is commented out to ensure no functionality is removed from backend,
-// even if frontend currently uses a direct Google Maps embed.
-/*
+// GEOSPATIAL SEARCH ROUTE
 app.get('/api/blood-banks/nearby', async (req, res) => {
   const { latitude, longitude, maxDistance } = req.query; // maxDistance in meters
 
@@ -297,13 +284,9 @@ app.get('/api/blood-banks/nearby', async (req, res) => {
     res.status(500).json({ msg: 'Server error finding nearby blood banks', error: err.message });
   }
 });
-*/
 
 
 // BLOOD UNIT ROUTES
-// @route   POST /api/blood-units
-// @desc    Add a new blood unit
-// @access  Private (Blood Bank Staff, Admin)
 app.post('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin']), async (req, res) => {
   const { unitId, bloodGroup, componentType, collectionDate, expiryDate, bloodBankId, donorId } = req.body;
   try {
@@ -335,9 +318,6 @@ app.post('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin']), 
   }
 });
 
-// @route   GET /api/blood-units
-// @desc    Get all blood units (for inventory management)
-// @access  Private (Blood Bank Staff, Admin, Supervisor)
 app.get('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin', 'supervisor']), async (req, res) => {
   try {
     const bloodUnits = await BloodUnit.find().populate('bloodBank', 'name').populate('donor', 'firstName lastName email');
@@ -348,9 +328,6 @@ app.get('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin', 'su
   }
 });
 
-// @route   GET /api/blood-units/inventory-summary
-// @desc    Get a summary of available blood groups
-// @access  Public (or All Authenticated Users) - useful for public display or hospital dashboards
 app.get('/api/blood-units/inventory-summary', async (req, res) => {
   try {
     const summary = await BloodUnit.aggregate([
@@ -371,9 +348,6 @@ app.get('/api/blood-units/inventory-summary', async (req, res) => {
   }
 });
 
-// @route   PUT /api/blood-units/:id
-// @desc    Update a blood unit's status or details
-// @access  Private (Blood Bank Staff, Admin)
 app.put('/api/blood-units/:id', auth, authorizeRole(['bloodbank_staff', 'admin']), async (req, res) => {
   const { status, recipient, request } = req.body;
   const unitId = req.params.id;
@@ -409,9 +383,6 @@ app.put('/api/blood-units/:id', auth, authorizeRole(['bloodbank_staff', 'admin']
 
 
 // BLOOD REQUEST ROUTES
-// @route   POST /api/blood-requests
-// @desc    Create a new blood request
-// @access  Private (Hospital, Doctor)
 app.post('/api/blood-requests', auth, authorizeRole(['hospital', 'doctor']), async (req, res) => {
   const { bloodGroup, componentType, quantity, urgency, notes, doctorId } = req.body;
   try {
@@ -621,7 +592,16 @@ app.put('/api/appointments/:id/status', auth, authorizeRole(['bloodbank_staff', 
     if (!['Scheduled', 'Completed', 'Cancelled', 'No-Show'].includes(status)) {
       return res.status(400).json({ msg: 'Invalid status provided' });
     }
-    appointment.status = status;
+    // Allow donor to cancel their own appointment
+    if (req.user.role === 'donor' && appointment.donor && appointment.donor.toString() === req.user.id && status === 'Cancelled') {
+      appointment.status = status;
+    } else if (['bloodbank_staff', 'supervisor', 'admin'].includes(req.user.role)) {
+      // Allow staff/admin to change status
+      appointment.status = status;
+    } else {
+      return res.status(403).json({ msg: 'Forbidden: You do not have permission to perform this action.' });
+    }
+
     await appointment.save();
     res.json({ msg: `Appointment status updated to ${status}`, appointment });
   } catch (err) {
