@@ -14,7 +14,7 @@ const AboutPage = () => (
       <div className="md:w-1/2">
         <h2 className="text-4xl font-bold text-gray-900 mb-6">Our Mission</h2>
         <p className="text-lg text-gray-700 leading-relaxed mb-4">
-          At BloodLink, our mission is to create a seamless and efficient ecosystem for blood donation and distribution. We aim to bridge the gap between voluntary blood donors and those in critical need, ensuring timely access to safe blood.
+           We aim to bridge the gap between voluntary blood donors and those in critical need, ensuring timely access to safe blood.
         </p>
         <p className="text-lg text-gray-700 leading-relaxed">
           We are committed to raising awareness about the importance of blood donation, simplifying the donation process, and providing robust tools for blood banks, hospitals, and medical professionals to manage their blood inventory effectively.

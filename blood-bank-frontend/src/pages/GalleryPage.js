@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import donationDrive1Img from '../assets/images/donationDrive1.png'; 
+import donationDrive1Img from '../assets/images/donationDrive1Img.png'; 
+import bloodAwareness2Img from '../assets/images/bloodAwareness2Img.jpg';
+import volunteersWork3Img from '../assets/images/volunteersWork3Img.png';
+import impactfulDonation4Img from '../assets/images/impactfulDonation4.jpg';
+import campSetuU5Img from '../assets/images/campSetUp5Img.jpg';
+import donorAppreciation6Img from '../assets/images/donorAppreciation6Img.jpg'; 
 
 const GalleryPage = () => {
   const images = [
-    { src: donationDrive1Img.png, alt: "Donation Drive 1", title: "Community Donation Drive" },
-    { src: "https://via.placeholder.com/600x400/06D6A0/FFFFFF?text=Awareness+Event+2", alt: "Awareness Event 2", title: "Blood Awareness Campaign" },
-    { src: "https://via.placeholder.com/600x400/118AB2/FFFFFF?text=Volunteer+Work+3", alt: "Volunteer Work 3", title: "Volunteers in Action" },
-    { src: "https://via.placeholder.com/600x400/FF6B6B/FFFFFF?text=Success+Story+4", alt: "Success Story 4", title: "Impactful Donations" },
-    { src: "https://via.placeholder.com/600x400/6B6BFF/FFFFFF?text=Camp+Setup+5", alt: "Camp Setup 5", title: "Setting Up a Camp" },
-    { src: "https://via.placeholder.com/600x400/FFD166/FFFFFF?text=Donor+Appreciation+6", alt: "Donor Appreciation 6", title: "Appreciating Our Donors" },
+    { src: donationDrive1Img, alt: "Donation Drive 1", title: "Community Donation Drive" },
+    { src: bloodAwareness2Img, alt: "Awareness Event 2", title: "Blood Awareness Campaign" },
+    { src: volunteersWork3Img, alt: "Volunteer Work 3", title: "Volunteers in Action" },
+    { src: impactfulDonation4Img, alt: "Success Story 4", title: "Impactful Donations" },
+    { src: campSetuU5Img, alt: "Camp Setup 5", title: "Setting Up a Camp" },
+    { src: donorAppreciation6Img, alt: "Donor Appreciation 6", title: "Appreciating Our Donors" },
   ];
 
   const [selectedImage, setSelectedImage] = useState(null);
