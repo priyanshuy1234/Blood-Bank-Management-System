@@ -2,11 +2,11 @@
 require('dotenv').config();
 
 // Import necessary packages
-const express = require('express'); // For creating the server
-const mongoose = require('mongoose'); // For interacting with MongoDB
-const cors = require('cors'); // For handling Cross-Origin Resource Sharing
-const bcrypt = require('bcryptjs'); // For hashing passwords
-const jwt = require('jsonwebtoken'); // For creating JSON Web Tokens
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 // Import models
 const User = require('./models/User');
@@ -16,27 +16,24 @@ const BloodRequest = require('./models/BloodRequest');
 const Appointment = require('./models/Appointment');
 
 // Import middleware
-const auth = require('./middleware/auth'); // Authentication middleware
+const auth = require('./middleware/auth');
 
 // Initialize the Express application
 const app = express();
 
 // Middleware
-app.use(express.json()); // For parsing JSON request bodies
+app.use(express.json());
 
-// --- CORS Configuration ---
-// IMPORTANT: Replace 'https://blood-link-one.vercel.app' with your actual Vercel frontend URL.
-// Include localhost for local development testing.
+// CORS: Allow all origins for development, restrict in production if needed
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://blood-link-one.vercel.app'] // Allow requests from both local and deployed frontend
+  origin: '*', // Change to your frontend URL in production for security
 }));
-
 
 // MongoDB Connection URI from .env file
 const mongoURI = process.env.MONGO_URI;
 
 // JWT Secret from environment variables
-const jwtSecret = process.env.JWT_SECRET || 'supersecretjwtkey'; // Fallback for development (use a strong key in .env)
+const jwtSecret = process.env.JWT_SECRET || 'supersecretjwtkey';
 
 // Connect to MongoDB
 mongoose.connect(mongoURI)
@@ -63,14 +60,12 @@ const authorizeRole = (roles) => {
 
 // --- API Routes ---
 
+// Health check route
 app.get('/', (req, res) => {
   res.send('Blood Bank Backend API is running!');
 });
 
 // AUTHENTICATION ROUTES
-// @route   POST /api/auth/register
-// @desc    Register a new user
-// @access  Public
 app.post('/api/auth/register', async (req, res) => {
   const { email, password, role, firstName, lastName, contactNumber, address } = req.body;
   try {
@@ -93,9 +88,6 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/login
-// @desc    Authenticate user & get token (Login)
-// @access  Public
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -225,7 +217,6 @@ app.get('/api/users', auth, authorizeRole(['admin', 'supervisor', 'bloodbank_sta
   }
 });
 
-
 // BLOOD BANK ROUTES
 app.post('/api/blood-banks', auth, authorizeRole(['admin']), async (req, res) => {
   const { name, contactEmail, contactPhone, address, location } = req.body;
@@ -252,38 +243,6 @@ app.get('/api/blood-banks', async (req, res) => {
     res.status(500).send('Server error fetching blood banks');
   }
 });
-
-// GEOSPATIAL SEARCH ROUTE
-app.get('/api/blood-banks/nearby', async (req, res) => {
-  const { latitude, longitude, maxDistance } = req.query; // maxDistance in meters
-
-  if (!latitude || !longitude) {
-    return res.status(400).json({ msg: 'Latitude and longitude are required.' });
-  }
-
-  const coords = [parseFloat(longitude), parseFloat(latitude)];
-  const distance = parseInt(maxDistance) || 50000; // Default to 50km (50000 meters) if not provided
-
-  try {
-    const nearbyBloodBanks = await BloodBank.find({
-      'address.location': {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: coords, // [longitude, latitude]
-          },
-          $maxDistance: distance, // distance in meters
-        },
-      },
-    });
-
-    res.json(nearbyBloodBanks);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error finding nearby blood banks', error: err.message });
-  }
-});
-
 
 // BLOOD UNIT ROUTES
 app.post('/api/blood-units', auth, authorizeRole(['bloodbank_staff', 'admin']), async (req, res) => {
@@ -380,7 +339,6 @@ app.put('/api/blood-units/:id', auth, authorizeRole(['bloodbank_staff', 'admin']
   }
 });
 
-
 // BLOOD REQUEST ROUTES
 app.post('/api/blood-requests', auth, authorizeRole(['hospital', 'doctor']), async (req, res) => {
   const { bloodGroup, componentType, quantity, urgency, notes, doctorId } = req.body;
@@ -419,9 +377,6 @@ app.post('/api/blood-requests', auth, authorizeRole(['hospital', 'doctor']), asy
   }
 });
 
-// @route   GET /api/blood-requests
-// @desc    Get all blood requests (for blood bank staff/admin)
-// @access  Private (Blood Bank Staff, Supervisor, Admin)
 app.get('/api/blood-requests', auth, authorizeRole(['bloodbank_staff', 'supervisor', 'admin']), async (req, res) => {
   try {
     const requests = await BloodRequest.find()
@@ -435,9 +390,6 @@ app.get('/api/blood-requests', auth, authorizeRole(['bloodbank_staff', 'supervis
   }
 });
 
-// @route   GET /api/blood-requests/my
-// @desc    Get requests made by the logged-in hospital or doctor
-// @access  Private (Hospital, Doctor)
 app.get('/api/blood-requests/my', auth, authorizeRole(['hospital', 'doctor']), async (req, res) => {
   try {
     let requests;
@@ -459,9 +411,6 @@ app.get('/api/blood-requests/my', auth, authorizeRole(['hospital', 'doctor']), a
   }
 });
 
-// @route   PUT /api/blood-requests/:id/status
-// @desc    Update status of a blood request
-// @access  Private (Blood Bank Staff, Supervisor, Admin)
 app.put('/api/blood-requests/:id/status', auth, authorizeRole(['bloodbank_staff', 'supervisor', 'admin']), async (req, res) => {
   const requestId = req.params.id;
   const { status } = req.body;
@@ -473,16 +422,10 @@ app.put('/api/blood-requests/:id/status', auth, authorizeRole(['bloodbank_staff'
     if (!['Approved', 'Rejected', 'Fulfilled', 'Cancelled'].includes(status)) {
       return res.status(400).json({ msg: 'Invalid status provided' });
     }
-    // Allow donor to cancel their own appointment
-    if (req.user.role === 'donor' && request.donor && request.donor.toString() === req.user.id && status === 'Cancelled') {
-      request.status = status;
-    } else if (['bloodbank_staff', 'supervisor', 'admin'].includes(req.user.role)) {
-      // Allow staff/admin to change status
-      request.status = status;
-    } else {
-      return res.status(403).json({ msg: 'Forbidden: You do not have permission to perform this action.' });
+    request.status = status;
+    if (status === 'Fulfilled') {
+      request.fulfillmentDate = Date.now();
     }
-
     await request.save();
     res.json({ msg: `Request status updated to ${status}`, request });
   } catch (err) {
@@ -491,9 +434,6 @@ app.put('/api/blood-requests/:id/status', auth, authorizeRole(['bloodbank_staff'
   }
 });
 
-// @route   PUT /api/blood-requests/:id/fulfill
-// @desc    Fulfill a blood request by assigning units
-// @access  Private (Blood Bank Staff, Admin)
 app.put('/api/blood-requests/:id/fulfill', auth, authorizeRole(['bloodbank_staff', 'admin']), async (req, res) => {
   const requestId = req.params.id;
   const { assignedUnitIds } = req.body;
@@ -538,7 +478,6 @@ app.put('/api/blood-requests/:id/fulfill', auth, authorizeRole(['bloodbank_staff
     res.status(500).json({ msg: 'Server error fulfilling blood request', error: err.message });
   }
 });
-
 
 // APPOINTMENT ROUTES
 app.post('/api/appointments', auth, authorizeRole(['donor']), async (req, res) => {
@@ -597,16 +536,7 @@ app.put('/api/appointments/:id/status', auth, authorizeRole(['bloodbank_staff', 
     if (!['Scheduled', 'Completed', 'Cancelled', 'No-Show'].includes(status)) {
       return res.status(400).json({ msg: 'Invalid status provided' });
     }
-    // Allow donor to cancel their own appointment
-    if (req.user.role === 'donor' && appointment.donor && appointment.donor.toString() === req.user.id && status === 'Cancelled') {
-      appointment.status = status;
-    } else if (['bloodbank_staff', 'supervisor', 'admin'].includes(req.user.role)) {
-      // Allow staff/admin to change status
-      appointment.status = status;
-    } else {
-      return res.status(403).json({ msg: 'Forbidden: You do not have permission to perform this action.' });
-    }
-
+    appointment.status = status;
     await appointment.save();
     res.json({ msg: `Appointment status updated to ${status}`, appointment });
   } catch (err) {
@@ -614,7 +544,6 @@ app.put('/api/appointments/:id/status', auth, authorizeRole(['bloodbank_staff', 
     res.status(500).send('Server error updating appointment status');
   }
 });
-
 
 // Define the port for the server to listen on
 const PORT = process.env.PORT || 5000;
