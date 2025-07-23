@@ -61,7 +61,7 @@ const AdminDashboard = ({ userId }) => {
 
     try {
       // Fetch Inventory Summary
-      const summaryResponse = await fetch('http://localhost:5000/api/blood-units/inventory-summary');
+      const summaryResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/blood-units/inventory-summary');
       if (!summaryResponse.ok) {
         throw new Error('Failed to fetch inventory summary');
       }
@@ -69,7 +69,7 @@ const AdminDashboard = ({ userId }) => {
       setInventorySummary(summaryData);
 
       // Fetch all Blood Units
-      const unitsResponse = await fetch('http://localhost:5000/api/blood-units', {
+      const unitsResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/blood-units', {
         headers: { 'x-auth-token': token }
       });
       if (!unitsResponse.ok) {
@@ -82,7 +82,7 @@ const AdminDashboard = ({ userId }) => {
 
 
       // Fetch Blood Banks
-      const banksResponse = await fetch('http://localhost:5000/api/blood-banks');
+      const banksResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/blood-banks');
       if (!banksResponse.ok) {
         throw new Error('Failed to fetch blood banks');
       }
@@ -93,7 +93,7 @@ const AdminDashboard = ({ userId }) => {
       }
 
       // Fetch all Blood Requests
-      const requestsResponse = await fetch('http://localhost:5000/api/blood-requests', {
+      const requestsResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/blood-requests', {
         headers: { 'x-auth-token': token }
       });
       if (!requestsResponse.ok) {
@@ -104,7 +104,7 @@ const AdminDashboard = ({ userId }) => {
       setRequests(requestsData);
 
       // Fetch all Appointments
-      const appointmentsResponse = await fetch('http://localhost:5000/api/appointments', {
+      const appointmentsResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/appointments', {
         headers: { 'x-auth-token': token }
       });
       if (!appointmentsResponse.ok) {
@@ -169,7 +169,7 @@ const AdminDashboard = ({ userId }) => {
       if (new Date(newUnitFormData.expiryDate) <= new Date(newUnitFormData.collectionDate)) {
         throw new Error('Expiry Date must be after Collection Date.');
       }
-      const response = await fetch('http://localhost:5000/api/blood-units', {
+      const response = await fetch('https://blood-link-backend-02gi.onrender.com/api/blood-units', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, body: JSON.stringify(newUnitFormData)
       });
       if (!response.ok) { const errData = await response.json(); throw new Error(errData.msg || 'Failed to add blood unit'); }
@@ -193,7 +193,7 @@ const AdminDashboard = ({ userId }) => {
     setAddBankStatus('Adding blood bank...');
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/api/blood-banks', {
+      const response = await fetch('https://blood-link-backend-02gi.onrender.com/api/blood-banks', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, body: JSON.stringify(newBankFormData)
       });
       if (!response.ok) { const errData = await response.json(); throw new Error(errData.msg || 'Failed to add blood bank'); }
@@ -207,7 +207,7 @@ const AdminDashboard = ({ userId }) => {
     setActionStatus('Updating request status...');
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:5000/api/blood-requests/${requestId}/status`, {
+      const response = await fetch(`https://blood-link-backend-02gi.onrender.com/api/blood-requests/${requestId}/status`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, body: JSON.stringify({ status: newStatus })
       });
       if (!response.ok) { const errData = await response.json(); throw new Error(errData.msg || 'Failed to update status'); }
@@ -224,7 +224,7 @@ const AdminDashboard = ({ userId }) => {
       setActionStatus('Error: Please select a request and at least one unit.'); setTimeout(() => setActionStatus(''), 3000); return;
     }
     try {
-      const response = await fetch(`http://localhost:5000/api/blood-requests/${selectedRequest._id}/fulfill`, {
+      const response = await fetch(`https://blood-link-backend-02gi.onrender.com/api/blood-requests/${selectedRequest._id}/fulfill`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, body: JSON.stringify({ assignedUnitIds: selectedUnitsForFulfillment })
       });
       if (!response.ok) { const errData = await response.json(); throw new Error(errData.msg || 'Failed to fulfill request'); }
@@ -237,7 +237,7 @@ const AdminDashboard = ({ userId }) => {
     setActionStatus('Updating appointment status...');
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:5000/api/appointments/${appointmentId}/status`, {
+      const response = await fetch(`https://blood-link-backend-02gi.onrender.com/api/appointments/${appointmentId}/status`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, body: JSON.stringify({ status: newStatus })
       });
       if (!response.ok) { const errData = await response.json(); throw new Error(errData.msg || 'Failed to update appointment status'); }

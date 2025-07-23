@@ -53,7 +53,7 @@ const DonorDashboard = ({ userId }) => {
 
       try {
         // Fetch User Profile
-        const profileResponse = await fetch('http://localhost:5000/api/profile/me', {
+        const profileResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/profile/me', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -92,7 +92,7 @@ const DonorDashboard = ({ userId }) => {
         setNewAppointmentFormData(prev => ({ ...prev, bloodGroup: profileData.bloodType || '' })); // Prefill blood group for appointment
 
         // Fetch Donor's Appointments
-        const appointmentsResponse = await fetch('http://localhost:5000/api/appointments/my', {
+        const appointmentsResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/appointments/my', {
             headers: { 'x-auth-token': token }
         });
         if (!appointmentsResponse.ok) {
@@ -103,7 +103,7 @@ const DonorDashboard = ({ userId }) => {
         setAppointments(appointmentsData);
 
         // Fetch Blood Banks for dropdown
-        const banksResponse = await fetch('http://localhost:5000/api/blood-banks');
+        const banksResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/blood-banks');
         if (!banksResponse.ok) {
             throw new Error('Failed to fetch blood banks');
         }
@@ -151,7 +151,7 @@ const DonorDashboard = ({ userId }) => {
     const token = localStorage.getItem('token');
 
     try {
-      const response = await fetch('http://localhost:5000/api/profile/me', {
+      const response = await fetch('https://blood-link-backend-02gi.onrender.com/api/profile/me', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -204,7 +204,7 @@ const DonorDashboard = ({ userId }) => {
     const token = localStorage.getItem('token');
 
     try {
-      const response = await fetch('http://localhost:5000/api/profile/eligibility', {
+      const response = await fetch('https://blood-link-backend-02gi.onrender.com/api/profile/eligibility', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -243,7 +243,7 @@ const DonorDashboard = ({ userId }) => {
     const token = localStorage.getItem('token');
 
     try {
-      const response = await fetch('http://localhost:5000/api/appointments', {
+      const response = await fetch('https://blood-link-backend-02gi.onrender.com/api/appointments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -270,7 +270,7 @@ const DonorDashboard = ({ userId }) => {
         notes: ''
       });
       // Re-fetch all donor data to update appointments list
-      const updatedAppointmentsResponse = await fetch('http://localhost:5000/api/appointments/my', {
+      const updatedAppointmentsResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/appointments/my', {
         headers: { 'x-auth-token': token }
       });
       const updatedAppointmentsData = await updatedAppointmentsResponse.json();
@@ -291,7 +291,7 @@ const DonorDashboard = ({ userId }) => {
       const token = localStorage.getItem('token');
 
       try {
-        const response = await fetch(`http://localhost:5000/api/appointments/${appointmentId}/status`, {
+        const response = await fetch(`https://blood-link-backend-02gi.onrender.com/api/appointments/${appointmentId}/status`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -307,7 +307,7 @@ const DonorDashboard = ({ userId }) => {
 
         setAppointmentStatusMessage('Appointment cancelled successfully!');
         // Re-fetch all donor data to update appointments list
-        const updatedAppointmentsResponse = await fetch('http://localhost:5000/api/appointments/my', {
+        const updatedAppointmentsResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/appointments/my', {
             headers: { 'x-auth-token': token }
         });
         const updatedAppointmentsData = await updatedAppointmentsResponse.json();

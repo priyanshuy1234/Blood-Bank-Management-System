@@ -26,7 +26,7 @@ const DoctorDashboard = ({ userId }) => {
 
     try {
       // Fetch requests made by this doctor
-      const requestsResponse = await fetch('http://localhost:5000/api/blood-requests/my', {
+      const requestsResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/blood-requests/my', {
         headers: { 'x-auth-token': token }
       });
       if (!requestsResponse.ok) {
@@ -59,7 +59,7 @@ const DoctorDashboard = ({ userId }) => {
     const token = localStorage.getItem('token');
 
     try {
-      const response = await fetch('http://localhost:5000/api/blood-requests', {
+      const response = await fetch('https://blood-link-backend-02gi.onrender.com/api/blood-requests', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

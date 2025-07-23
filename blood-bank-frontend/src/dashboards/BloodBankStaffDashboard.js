@@ -22,7 +22,7 @@ const BloodBankStaffDashboard = ({ userId }) => {
 
     try {
       // Fetch all Blood Requests
-      const requestsResponse = await fetch('http://localhost:5000/api/blood-requests', {
+      const requestsResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/blood-requests', {
         headers: { 'x-auth-token': token }
       });
       if (!requestsResponse.ok) {
@@ -33,7 +33,7 @@ const BloodBankStaffDashboard = ({ userId }) => {
       setRequests(requestsData);
 
       // Fetch all Appointments
-      const appointmentsResponse = await fetch('http://localhost:5000/api/appointments', {
+      const appointmentsResponse = await fetch('https://blood-link-backend-02gi.onrender.com/api/appointments', {
         headers: { 'x-auth-token': token }
       });
       if (!appointmentsResponse.ok) {
@@ -60,7 +60,7 @@ const BloodBankStaffDashboard = ({ userId }) => {
     const token = localStorage.getItem('token');
 
     try {
-      const response = await fetch(`http://localhost:5000/api/blood-requests/${requestId}/status`, {
+      const response = await fetch(`https://blood-link-backend-02gi.onrender.com/api/blood-requests/${requestId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +98,7 @@ const BloodBankStaffDashboard = ({ userId }) => {
     const unitIdsArray = assignedUnitIds.split(',').map(id => id.trim()).filter(id => id);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/blood-requests/${selectedRequest._id}/fulfill`, {
+      const response = await fetch(`https://blood-link-backend-02gi.onrender.com/api/blood-requests/${selectedRequest._id}/fulfill`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ const BloodBankStaffDashboard = ({ userId }) => {
     const token = localStorage.getItem('token');
 
     try {
-      const response = await fetch(`http://localhost:5000/api/appointments/${appointmentId}/status`, {
+      const response = await fetch(`https://blood-link-backend-02gi.onrender.com/api/appointments/${appointmentId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
