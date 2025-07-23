@@ -44,7 +44,7 @@ const LoginPage = ({ onLogin }) => {
     e.preventDefault();
     setStatus('Processing...');
     
-    const url = isRegister ? 'https://blood-link-backend-02gi.onrender.com/api/auth/register' : 'http://localhost:5000/api/auth/login';
+    const url = isRegister ? 'https://blood-link-backend-02gi.onrender.com/api/auth/register' : 'https://blood-link-backend-02gi.onrender.com/api/auth/login';
     
     // Prepare data based on whether it's register or login
     let dataToSend;
